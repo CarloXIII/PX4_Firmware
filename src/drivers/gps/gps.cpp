@@ -65,6 +65,7 @@
 
 #include "ubx.h"
 #include "mtk.h"
+#include "novatel.h"
 
 
 #define TIMEOUT_5HZ 500
@@ -161,7 +162,7 @@ GPS::GPS(const char* uart_path) :
 	_task_should_exit(false),
 	_healthy(false),
 	_mode_changed(false),
-	_mode(GPS_DRIVER_MODE_UBX),
+	_mode(GPS_DRIVER_MODE_NOVATEL),
 	_Helper(nullptr),
 	_report_pub(-1),
 	_rate(0.0f)
@@ -276,6 +277,9 @@ GPS::task_main()
 			case GPS_DRIVER_MODE_MTK:
 				_Helper = new MTK(_serial_fd, &_report);
 				break;
+			case GPS_DRIVER_MODE_NOVATEL:
+				_Helper = new NOVATEL(_serial_fd, &_report);
+				break;
 			case GPS_DRIVER_MODE_NMEA:
 				//_Helper = new NMEA(); //TODO: add NMEA
 				break;
@@ -369,6 +373,9 @@ GPS::print_info()
 			break;
 		case GPS_DRIVER_MODE_NMEA:
 			warnx("protocol: NMEA");
+			break;
+		case GPS_DRIVER_MODE_NOVATEL:
+			warnx("protocol: NOVATEL");
 			break;
 		default:
 			break;
