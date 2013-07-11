@@ -83,9 +83,9 @@ typedef struct {
 	double_t hgt; /**< Height above mean sea level, m */
 	float_t undulation; /**< Undulation - the relationship between the geoid and the ellipsoid (m) of the chosen datum */
 	uint32_t datum_id_nr; /**< Datum ID number */
-	float_t sigma_lat; /**< Latitude standard deviation, XXX */
-	float_t sigma_lon; /**< Longitude standard deviation, XXX */
-	float_t sigma_hgt; /**< Height standard deviation, XXX */
+	float_t sigma_lat; /**< Latitude standard deviation, deg */
+	float_t sigma_lon; /**< Longitude standard deviation, deg */
+	float_t sigma_hgt; /**< Height standard deviation, m */
 	uint32_t stn_id; /**< Base station ID */
 	float_t dgps_age; /**< Differential age, s */
 	float_t sol_age; /**< Solution age, s */
