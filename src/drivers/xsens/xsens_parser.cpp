@@ -32,7 +32,7 @@
  *
  ****************************************************************************/
 
-/* @file novatel.cpp */
+/* @file xsens_parser.cpp */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -43,65 +43,48 @@
 #include <systemlib/err.h>
 #include <drivers/drv_hrt.h>
 
-#include "novatel.h"
+#include "xsens_parser.h"
+
+#define XSENS_GPS_PVT 1
+#define XSENS_TEMP 1
+#define XSENS_CALIBRATED_DATA 1
+#define XSENS_ORIENTATION_QUATERNION 1
+#define XSENS_ORIENTATION_EULER 1
+#define XSENS_ORIENTATION_MATRIX 1
+#define XSENS_AUXILIARY 1
+#define XSENS_POSITION 1
+#define XSENS_VELOCITY 1
+#define XSENS_STATUS 1
+#define XSENS_SAMPLE_COUNTER 1
+#define XSENS_UTC_TIME 1
 
 
-NOVATEL::NOVATEL(const int &fd, struct vehicle_gps_position_s *gps_position) :
+XSENS_PARSER::XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position) :
 _fd(fd),
 _gps_position(gps_position),
-_novatel_revision(0)
+_xsens_revision(0)
 {
 	decode_init();
 }
 
-NOVATEL::~NOVATEL()
+XSENS_PARSER::~XSENS_PARSER()
 {
 }
 
 int
-NOVATEL::configure(unsigned &baudrate)
+XSENS_PARSER::configure(unsigned &baudrate)
 {
 	/* set baudrate first */
-	if (GPS_Helper::set_baudrate(_fd, NOVATEL_BAUDRATE) != 0)
+	if (XSENS_Helper::set_baudrate(_fd, XSENS_BAUDRATE) != 0)
 		return -1;
 
-	baudrate = NOVATEL_BAUDRATE;
-
-	/* Write config messages, don't wait for an answer */
-	/*if (strlen(MTK_OUTPUT_5HZ) != write(_fd, MTK_OUTPUT_5HZ, strlen(MTK_OUTPUT_5HZ))) {
-		warnx("mtk: config write failed");
-		return -1;
-	}
-	usleep(10000);
-
-	if (strlen(MTK_SET_BINARY) != write(_fd, MTK_SET_BINARY, strlen(MTK_SET_BINARY))) {
-		warnx("mtk: config write failed");
-		return -1;
-	}
-	usleep(10000);
-
-	if (strlen(SBAS_ON) != write(_fd, SBAS_ON, strlen(SBAS_ON))) {
-		warnx("mtk: config write failed");
-		return -1;
-	}
-	usleep(10000);
-
-	if (strlen(WAAS_ON) != write(_fd, WAAS_ON, strlen(WAAS_ON))) {
-		warnx("mtk: config write failed");
-		return -1;
-	}
-	usleep(10000);
-
-	if (strlen(MTK_NAVTHRES_OFF) != write(_fd, MTK_NAVTHRES_OFF, strlen(MTK_NAVTHRES_OFF))) {
-		warnx("mtk: config write failed");
-		return -1;
-	}*/
+	baudrate = XSENS_BAUDRATE;
 
 	return 0;
 }
 
 int
-NOVATEL::receive(unsigned timeout)
+XSENS_PARSER::receive(unsigned timeout)
 {
 	/* poll descriptor */
 	pollfd fds[1];
@@ -162,89 +145,68 @@ NOVATEL::receive(unsigned timeout)
 }
 
 int
-NOVATEL::parse_char(uint8_t b)
+XSENS_PARSER::parse_char(uint8_t b)
 {
 	switch (_decode_state) {
-		/* First, look for start '#' */
-		case NOVATEL_DECODE_UNINIT:
-			if (b == NOVATEL_SYNC1) {
-				_decode_state = NOVATEL_DECODE_GOT_SYNC1;
+	warnx("decoding");
+		/* First, look for PRE */
+		case XSENS_DECODE_UNINIT:
+			if (b == XSENS_PRE) {
+				_decode_state = XSENS_DECODE_GOT_SYNC1;
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
+				warnx("PRE found");
 			}
 			break;
-		/* Second, look for sync2 */
-		case NOVATEL_DECODE_GOT_SYNC1:
-			if (b == NOVATEL_SYNC2) {
-				_decode_state = NOVATEL_DECODE_GOT_SYNC2;
+		/* Second, look for BID */
+		case XSENS_DECODE_GOT_SYNC1:
+			if (b == XSENS_BID) {
+				_decode_state = XSENS_DECODE_GOT_SYNC2;
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
+				warnx("BID found");
 			} else {
 				/* Second start symbol was wrong, reset state machine */
 				decode_init();
 			}
 			break;
-		/* Third, look for sync3 */
-		case NOVATEL_DECODE_GOT_SYNC2:
-			if (b == NOVATEL_SYNC3) {
-				_decode_state = NOVATEL_DECODE_GOT_SYNC3;
+		/* Third, look for MID */
+		case XSENS_DECODE_GOT_SYNC2:
+			if (b == XSENS_MID) {
+				_decode_state = XSENS_DECODE_GOT_SYNC3;
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
+				warnx("MID found");
 			} else {
 				/* Third start symbol was wrong, reset state machine */
 				decode_init();
 			}
 			break;
-		/* Get the length of the header */
-		case NOVATEL_DECODE_GOT_SYNC3:
-			_decode_state = NOVATEL_DECODE_GOT_HEADER_LGTH;
-			_rx_header_lgth = b;
+		/* Get the length of the message */
+		case XSENS_DECODE_GOT_SYNC3:
+			_decode_state = XSENS_DECODE_GOT_HEADER_LGTH;
+			_rx_message_lgth = b;
 			_rx_buffer[_rx_count] = b;
 			_rx_count++;
 			break;
-		/* Get the rest of the header */
-		case NOVATEL_DECODE_GOT_HEADER_LGTH:
-			if (_rx_count < _rx_header_lgth) {
-				_rx_buffer[_rx_count] = b;
-				_rx_count++;
-			} else {
-				_decode_state = NOVATEL_DECODE_GOT_MESSAGE_LGTH;
-				_rx_message_id = _rx_buffer[4] + (_rx_buffer[5] << 8);
-				_rx_message_lgth = _rx_buffer[8] + (_rx_buffer[9] << 8);
-				_rx_buffer[_rx_count] = b;
-				_rx_count++;
-			}
-			break;
 		/* Get the message */
-		case NOVATEL_DECODE_GOT_MESSAGE_LGTH:
-			if (_rx_count < (_rx_header_lgth + _rx_message_lgth)) {
+		case XSENS_DECODE_GOT_MESSAGE_LGTH:
+			if (_rx_count < (_rx_message_lgth + 4)) {
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
 			} else {
-				_decode_state = NOVATEL_DECODE_GOT_CRC1;
+				_decode_state = XSENS_DECODE_GOT_CRC1;
 				_rx_crc = b;
-			}
-			break;
-		/* Get the rest of the crc */
-		case NOVATEL_DECODE_GOT_CRC1:
-			_decode_state = NOVATEL_DECODE_GOT_CRC2;
-			_rx_crc += b << 8;
-			break;
-		case NOVATEL_DECODE_GOT_CRC2:
-			_decode_state = NOVATEL_DECODE_GOT_CRC3;
-			_rx_crc += b << 16;
-			break;
-		case NOVATEL_DECODE_GOT_CRC3:
-			_rx_crc += b << 24;
 
-			/* compare checksum */
-			_calculated_crc = calculate_block_crc32(_rx_count, _rx_buffer);
-			if ( _calculated_crc == _rx_crc) {
-				return 1;
-			} else {
-				warnx("novatel: Checksum wrong. calculated crc: %x, rx crc: %x", _calculated_crc, _rx_crc);
-				decode_init();
-				return -1;
+				/* compare checksum */
+				_calculated_crc = calculate_block_crc32(_rx_count, _rx_buffer);
+				if ( _calculated_crc == _rx_crc) {
+					return 1;
+				} else {
+					warnx("xsens: Checksum wrong. calculated crc: %x", _calculated_crc);
+					decode_init();
+					return -1;
+				}
 			}
 			break;
 		default:
@@ -254,13 +216,158 @@ NOVATEL::parse_char(uint8_t b)
 }
 
 int
-NOVATEL::handle_message()
+XSENS_PARSER::handle_message()
 {
 	int ret = 0;
 	char _rx_buffer_message[_rx_message_lgth];
 	memcpy(_rx_buffer_message, &(_rx_buffer[_rx_header_lgth]), _rx_message_lgth);
-	gps_novatel_bestpos_packet_t *packet_bestpos;
-	gps_novatel_bestvel_packet_t *packet_bestvel;
+
+
+#if XSENS_GPS_PVT
+	unsigned xsens_gps_lgth = 44;
+	char _xsens_gps_message[xsens_gps_lgth];
+	memcpy(_xsens_gps_message, &(_rx_buffer[_rx_header_lgth]), xsens_gps_lgth);
+
+	xsens_gps_pvt_t *xsens_gps_pvt;
+	xsens_gps_pvt = (xsens_gps_pvt_t *) _xsens_gps_message;
+
+	_gps_position->lat = xsens_gps_pvt->lat;
+	_gps_position->lon = xsens_gps_pvt->lon;
+	_gps_position->alt = xsens_gps_pvt->hgt;
+	//_gps_position->satellites_visible = packet_bestpos->sat_tracked;
+	//_gps_position->vel_m_s = packet_bestvel->hor_spd;
+	//_gps_position->cog_rad = packet_bestvel->trk_gnd;
+	_gps_position->vel_n_m_s = xsens_gps_pvt->vel_n;
+	_gps_position->vel_e_m_s = xsens_gps_pvt->vel_e;
+	_gps_position->vel_d_m_s = xsens_gps_pvt->vel_d;
+	_gps_position->vel_ned_valid = true;
+	_gps_position->timestamp_position = hrt_absolute_time();
+	_gps_position->timestamp_velocity = hrt_absolute_time();
+	_gps_position->fix_type = 3;
+
+
+
+	_rx_header_lgth += xsens_gps_lgth;
+#endif
+
+#if XSENS_TEMP
+	unsigned xsens_temp_lgth = 4;
+	char _xsens_temp_message[xsens_temp_lgth];
+	memcpy(_xsens_temp_message, &(_rx_buffer[_rx_header_lgth]), xsens_temp_lgth);
+
+	xsens_temp_t *xsens_temp;
+	xsens_temp = (xsens_temp_t *) _xsens_temp_message;
+
+	_rx_header_lgth += xsens_temp_lgth;
+#endif
+
+#if XSENS_CALIBRATED_DATA
+	unsigned xsens_calibrated_lgth = 36;
+	char _xsens_calibrated_message[xsens_calibrated_lgth];
+	memcpy(_xsens_calibrated_message, &(_rx_buffer[_rx_header_lgth]), xsens_calibrated_lgth);
+
+	xsens_calibrated_data_t *xsens_calibrated;
+	xsens_calibrated = (xsens_calibrated_data_t *) _xsens_calibrated_message;
+
+	_rx_header_lgth += xsens_calibrated_lgth;
+#endif
+
+#if XSENS_ORIENTATION_QUATERNION
+	unsigned xsens_quaternion_lgth = 16;
+	char _xsens_quaternion_message[xsens_quaternion_lgth];
+	memcpy(_xsens_quaternion_message, &(_rx_buffer[_rx_header_lgth]), xsens_quaternion_lgth);
+
+	xsens_orientation_quaternion_t *xsens_quaternion;
+	xsens_quaternion = (xsens_orientation_quaternion_t *) _xsens_quaternion_message;
+
+	_rx_header_lgth += xsens_quaternion_lgth;
+#endif
+
+#if XSENS_ORIENTATION_EULER
+	unsigned xsens_euler_lgth = 12;
+	char _xsens_euler_message[xsens_euler_lgth];
+	memcpy(_xsens_euler_message, &(_rx_buffer[_rx_header_lgth]), xsens_euler_lgth);
+
+	xsens_orientation_euler_t *xsens_euler;
+	xsens_euler = (xsens_orientation_euler_t *) _xsens_euler_message;
+
+	_rx_header_lgth += xsens_euler_lgth;
+#endif
+
+#if XSENS_ORIENTATION_MATRIX
+	unsigned xsens_matrix_lgth = 36;
+	char _xsens_matrix_message[xsens_matrix_lgth];
+	memcpy(_xsens_matrix_message, &(_rx_buffer[_rx_header_lgth]), xsens_matrix_lgth);
+
+	xsens_orientation_matrix_t *xsens_matrix;
+	xsens_matrix = (xsens_orientation_matrix_t *) _xsens_matrix_message;
+
+	_rx_header_lgth += xsens_matrix_lgth;
+#endif
+
+#if XSENS_AUXILIARY
+	unsigned xsens_auxiliary_lgth = 4;
+	char _xsens_auxiliary_message[xsens_auxiliary_lgth];
+	memcpy(_xsens_auxiliary_message, &(_rx_buffer[_rx_header_lgth]), xsens_auxiliary_lgth);
+
+	xsens_auxiliary_data_t *xsens_auxiliary;
+	xsens_auxiliary = (xsens_auxiliary_data_t *) _xsens_auxiliary_message;
+
+	_rx_header_lgth += xsens_auxiliary_lgth;
+#endif
+
+#if XSENS_POSITION
+	unsigned xsens_position_lgth = 12;
+	char _xsens_position_message[xsens_position_lgth];
+	memcpy(_xsens_position_message, &(_rx_buffer[_rx_header_lgth]), xsens_position_lgth);
+
+	xsens_position_data_t *xsens_position;
+	xsens_position = (xsens_position_data_t *) _xsens_position_message;
+
+	_rx_header_lgth += xsens_position_lgth;
+#endif
+
+#if XSENS_VELOCITY
+	unsigned xsens_velocity_lgth = 12;
+	char _xsens_velocity_message[xsens_velocity_lgth];
+	memcpy(_xsens_velocity_message, &(_rx_buffer[_rx_header_lgth]), xsens_velocity_lgth);
+
+	xsens_velocity_data_t *xsens_velocity;
+	xsens_velocity = (xsens_velocity_data_t *) _xsens_velocity_message;
+
+	_rx_header_lgth += xsens_velocity_lgth;
+#endif
+
+#if XSENS_STATUS
+	unsigned xsens_status_lgth = 1;
+
+	xsens_status_t *xsens_status;
+	xsens_status->status = _rx_buffer[_rx_header_lgth];
+
+	_rx_header_lgth += xsens_status_lgth;
+#endif
+
+#if XSENS_SAMPLE_COUNTER
+	unsigned xsens_sample_lgth = 2;
+	char _xsens_sample_message[xsens_sample_lgth];
+	memcpy(_xsens_sample_message, &(_rx_buffer[_rx_header_lgth]), xsens_sample_lgth);
+
+	xsens_sample_counter_t *xsens_sample;
+	xsens_sample = (xsens_sample_counter_t *) _xsens_sample_message;
+
+	_rx_header_lgth += xsens_sample_lgth;
+#endif
+
+#if XSENS_UTC_TIME
+	unsigned xsens_utc_lgth = 12;
+	char _xsens_utc_message[xsens_utc_lgth];
+	memcpy(_xsens_utc_message, &(_rx_buffer[_rx_header_lgth]), xsens_utc_lgth);
+
+	xsens_utc_time_t *xsens_utc;
+	xsens_utc = (xsens_utc_time_t *) _xsens_utc_message;
+
+	_rx_header_lgth += xsens_utc_lgth;
+#endif
 
 /*
 	for (int i = 0; i < _rx_message_lgth; i++){
@@ -268,6 +375,8 @@ NOVATEL::handle_message()
 	}
 	warnx("handle message");
 */
+
+	/*
 	switch (_rx_message_id) {
 		case NOVATEL_BESTPOS:
 			packet_bestpos = (gps_novatel_bestpos_packet_t *) _rx_buffer_message;
@@ -276,9 +385,9 @@ NOVATEL::handle_message()
 			_gps_position->lon = packet_bestpos->lon * 1e7;
 			_gps_position->alt = packet_bestpos->hgt * 1e3;
 			_gps_position->satellites_visible = packet_bestpos->sat_tracked;
-			_gps_position->timestamp_position = hrt_absolute_time();
-			_gps_position->timestamp_satellites = hrt_absolute_time();
+			_gps_position->timestamp_time = hrt_absolute_time();
 			_gps_position->fix_type = 3;
+
 			//_gps_position->satellite_used = packet_bestpos->sat_used;
 
 			warnx("solstat: %d", packet_bestpos->solstat);
@@ -334,14 +443,16 @@ NOVATEL::handle_message()
 			break;
 
 	}
+
+	*/
 	decode_init();
 	return ret;
 }
 
 void
-NOVATEL::decode_init()
+XSENS_PARSER::decode_init()
 {
-	_decode_state = NOVATEL_DECODE_UNINIT;
+	_decode_state = XSENS_DECODE_UNINIT;
 	_rx_count = 0;
 	_rx_header_lgth = 0;
 	_rx_message_id = 0;
@@ -350,7 +461,7 @@ NOVATEL::decode_init()
 }
 
 unsigned long
-NOVATEL::calculate_block_crc32(unsigned long message_lgth, unsigned char *data)
+XSENS_PARSER::calculate_block_crc32(unsigned long message_lgth, unsigned char *data)
 {
 	unsigned long ulTemp1;
 	unsigned long ulTemp2;
@@ -365,7 +476,7 @@ NOVATEL::calculate_block_crc32(unsigned long message_lgth, unsigned char *data)
 }
 
 unsigned long
-NOVATEL::CRC32Value(int i)
+XSENS_PARSER::CRC32Value(int i)
 {
 	int j;
 	unsigned long ulCRC;

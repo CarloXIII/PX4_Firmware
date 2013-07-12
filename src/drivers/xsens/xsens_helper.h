@@ -1,6 +1,8 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
+ *   Author: Thomas Gubler <thomasgubler@student.ethz.ch>
+ *           Julian Oes <joes@student.ethz.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,32 +33,35 @@
  *
  ****************************************************************************/
 
-/**
- * @file XSENS driver interface.
+/** 
+ * @file xsens_helper.h
  */
 
-#ifndef _DRV_XSENS_H
-#define _DRV_XSENS_H
+#ifndef XSENS_HELPER_H
+#define XSENS_HELPER_H
 
-#include <stdint.h>
-#include <sys/ioctl.h>
+#include <uORB/uORB.h>
+#include <uORB/topics/xsens_vehicle_gps_position.h>
 
-#include "drv_sensor.h"
-#include "drv_orb_dev.h"
+class XSENS_Helper
+{
+public:
+	virtual int			configure(unsigned &baud) = 0;
+	virtual int 			receive(unsigned timeout) = 0;
+	int 				set_baudrate(const int &fd, unsigned baud);
+	float				get_position_update_rate();
+	float				get_velocity_update_rate();
+	float				reset_update_rates();
+	float				store_update_rates();
 
-#define XSENS_DEFAULT_UART_PORT "/dev/ttyS2"
+protected:
+	uint8_t _rate_count_lat_lon;
+	uint8_t _rate_count_vel;
 
-#define XSENS_DEVICE_PATH	"/dev/xsens"
+	float _rate_lat_lon;
+	float _rate_vel;
 
-/*
- * ObjDev tag for xsens data.
- */
-ORB_DECLARE(xsens);
+	uint64_t _interval_rate_start;
+};
 
-/*
- * ioctl() definitions
- */
-#define _XSENSIOCBASE			(0x2800)            //TODO: arbitrary choice...
-#define _XSENSIOC(_n)		(_IOC(_XSENSIOCBASE, _n))
-
-#endif /* _DRV_XSENS_H */
+#endif /* XSENS_HELPER_H */

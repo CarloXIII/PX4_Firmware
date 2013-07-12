@@ -33,6 +33,7 @@ MODULES		+= drivers/mkblctrl
 MODULES		+= drivers/md25
 MODULES		+= drivers/ets_airspeed
 MODULES		+= modules/sensors
+MODULES     += drivers/xsens
 
 #
 # System commands
