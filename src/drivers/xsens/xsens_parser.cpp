@@ -45,13 +45,13 @@
 
 #include "xsens_parser.h"
 
-#define XSENS_GPS_PVT 1
+#define XSENS_GPS_PVT 0
 #define XSENS_TEMP 1
-#define XSENS_CALIBRATED_DATA 1
-#define XSENS_ORIENTATION_QUATERNION 1
+#define XSENS_CALIBRATED_DATA 0
+#define XSENS_ORIENTATION_QUATERNION 0
 #define XSENS_ORIENTATION_EULER 1
-#define XSENS_ORIENTATION_MATRIX 1
-#define XSENS_AUXILIARY 1
+#define XSENS_ORIENTATION_MATRIX 0
+#define XSENS_AUXILIARY 0
 #define XSENS_POSITION 1
 #define XSENS_VELOCITY 1
 #define XSENS_STATUS 1
@@ -153,8 +153,8 @@ XSENS_PARSER::parse_char(uint8_t b)
 		case XSENS_DECODE_UNINIT:
 			if (b == XSENS_PRE) {
 				_decode_state = XSENS_DECODE_GOT_SYNC1;
-				_rx_buffer[_rx_count] = b;
-				_rx_count++;
+				//_rx_buffer[_rx_count] = b;
+				//_rx_count++;
 				warnx("PRE found");
 			}
 			break;
@@ -184,26 +184,33 @@ XSENS_PARSER::parse_char(uint8_t b)
 			break;
 		/* Get the length of the message */
 		case XSENS_DECODE_GOT_SYNC3:
-			_decode_state = XSENS_DECODE_GOT_HEADER_LGTH;
+			_decode_state = XSENS_DECODE_GOT_MESSAGE_LGTH;
 			_rx_message_lgth = b;
 			_rx_buffer[_rx_count] = b;
 			_rx_count++;
+			warnx("LEN: %x", _rx_message_lgth);
 			break;
 		/* Get the message */
 		case XSENS_DECODE_GOT_MESSAGE_LGTH:
-			if (_rx_count < (_rx_message_lgth + 4)) {
+			if (_rx_count < (_rx_message_lgth + 3)) { //+BID+MID+LEN, Preamble not part of the message
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
+				//warnx("_rx_count: %x", _rx_count);
+				//warnx("byte: %x", b);
 			} else {
-				_decode_state = XSENS_DECODE_GOT_CRC1;
-				_rx_crc = b;
+				//for (int i = 0; i < _rx_message_lgth+3; i++){
+				//	warnx("xsens: _rx_buffer_message[%d]: %x", i, _rx_buffer[i]);
+				//}
+				_decode_state = XSENS_DECODE_GOT_CHECKSUM;
+				_rx_buffer[_rx_count] = b;
+				_rx_count++;
 
 				/* compare checksum */
-				_calculated_crc = calculate_block_crc32(_rx_count, _rx_buffer);
-				if ( _calculated_crc == _rx_crc) {
+				_calculated_checksum = calculate_checksum(_rx_count, _rx_buffer);
+				if ( (uint8_t) _calculated_checksum == 0) {
 					return 1;
 				} else {
-					warnx("xsens: Checksum wrong. calculated crc: %x", _calculated_crc);
+					warnx("xsens: Checksum wrong. calculated crc: %x", _calculated_checksum);
 					decode_init();
 					return -1;
 				}
@@ -228,12 +235,14 @@ XSENS_PARSER::handle_message()
 	char _xsens_gps_message[xsens_gps_lgth];
 	memcpy(_xsens_gps_message, &(_rx_buffer[_rx_header_lgth]), xsens_gps_lgth);
 
+	swapBytes(_xsens_gps_message, xsens_gps_lgth);
+
 	xsens_gps_pvt_t *xsens_gps_pvt;
 	xsens_gps_pvt = (xsens_gps_pvt_t *) _xsens_gps_message;
 
 	_gps_position->lat = xsens_gps_pvt->lat;
 	_gps_position->lon = xsens_gps_pvt->lon;
-	_gps_position->alt = xsens_gps_pvt->hgt;
+	_gps_position->alt = xsens_gps_pvt->alt;
 	//_gps_position->satellites_visible = packet_bestpos->sat_tracked;
 	//_gps_position->vel_m_s = packet_bestvel->hor_spd;
 	//_gps_position->cog_rad = packet_bestvel->trk_gnd;
@@ -255,8 +264,12 @@ XSENS_PARSER::handle_message()
 	char _xsens_temp_message[xsens_temp_lgth];
 	memcpy(_xsens_temp_message, &(_rx_buffer[_rx_header_lgth]), xsens_temp_lgth);
 
+	swapBytes(_xsens_temp_message, xsens_temp_lgth);
+
 	xsens_temp_t *xsens_temp;
 	xsens_temp = (xsens_temp_t *) _xsens_temp_message;
+
+	warnx("xsens_temp: %f", xsens_temp->temp);
 
 	_rx_header_lgth += xsens_temp_lgth;
 #endif
@@ -266,8 +279,20 @@ XSENS_PARSER::handle_message()
 	char _xsens_calibrated_message[xsens_calibrated_lgth];
 	memcpy(_xsens_calibrated_message, &(_rx_buffer[_rx_header_lgth]), xsens_calibrated_lgth);
 
+	swapBytes(_xsens_calibrated_message, xsens_calibrated_lgth);
+
 	xsens_calibrated_data_t *xsens_calibrated;
 	xsens_calibrated = (xsens_calibrated_data_t *) _xsens_calibrated_message;
+
+	warnx("accx: %f", xsens_calibrated->accx);
+	warnx("accy: %f", xsens_calibrated->accy);
+	warnx("accz: %f", xsens_calibrated->accz);
+	warnx("gyrx: %f", xsens_calibrated->gyrx);
+	warnx("gyry: %f", xsens_calibrated->gyry);
+	warnx("gyrz: %f", xsens_calibrated->gyrz);
+	warnx("magx: %f", xsens_calibrated->magx);
+	warnx("magy: %f", xsens_calibrated->magy);
+	warnx("magz: %f", xsens_calibrated->magz);
 
 	_rx_header_lgth += xsens_calibrated_lgth;
 #endif
@@ -276,6 +301,8 @@ XSENS_PARSER::handle_message()
 	unsigned xsens_quaternion_lgth = 16;
 	char _xsens_quaternion_message[xsens_quaternion_lgth];
 	memcpy(_xsens_quaternion_message, &(_rx_buffer[_rx_header_lgth]), xsens_quaternion_lgth);
+
+	swapBytes(_xsens_quaternion_message, xsens_quaternion_lgth);
 
 	xsens_orientation_quaternion_t *xsens_quaternion;
 	xsens_quaternion = (xsens_orientation_quaternion_t *) _xsens_quaternion_message;
@@ -288,8 +315,14 @@ XSENS_PARSER::handle_message()
 	char _xsens_euler_message[xsens_euler_lgth];
 	memcpy(_xsens_euler_message, &(_rx_buffer[_rx_header_lgth]), xsens_euler_lgth);
 
+	swapBytes(_xsens_euler_message, xsens_euler_lgth);
+
 	xsens_orientation_euler_t *xsens_euler;
 	xsens_euler = (xsens_orientation_euler_t *) _xsens_euler_message;
+
+	warnx("xsens_roll: %f", xsens_euler->roll);
+	warnx("xsens_pitch: %f", xsens_euler->pitch);
+	warnx("xsens_yaw: %f", xsens_euler->yaw);
 
 	_rx_header_lgth += xsens_euler_lgth;
 #endif
@@ -298,6 +331,8 @@ XSENS_PARSER::handle_message()
 	unsigned xsens_matrix_lgth = 36;
 	char _xsens_matrix_message[xsens_matrix_lgth];
 	memcpy(_xsens_matrix_message, &(_rx_buffer[_rx_header_lgth]), xsens_matrix_lgth);
+
+	swapBytes(_xsens_matrix_message, xsens_matrix_lgth);
 
 	xsens_orientation_matrix_t *xsens_matrix;
 	xsens_matrix = (xsens_orientation_matrix_t *) _xsens_matrix_message;
@@ -310,6 +345,8 @@ XSENS_PARSER::handle_message()
 	char _xsens_auxiliary_message[xsens_auxiliary_lgth];
 	memcpy(_xsens_auxiliary_message, &(_rx_buffer[_rx_header_lgth]), xsens_auxiliary_lgth);
 
+	swapBytes(_xsens_auxiliary_message, xsens_auxiliary_lgth);
+
 	xsens_auxiliary_data_t *xsens_auxiliary;
 	xsens_auxiliary = (xsens_auxiliary_data_t *) _xsens_auxiliary_message;
 
@@ -321,8 +358,20 @@ XSENS_PARSER::handle_message()
 	char _xsens_position_message[xsens_position_lgth];
 	memcpy(_xsens_position_message, &(_rx_buffer[_rx_header_lgth]), xsens_position_lgth);
 
+	swapBytes(_xsens_position_message, xsens_position_lgth);
+
 	xsens_position_data_t *xsens_position;
 	xsens_position = (xsens_position_data_t *) _xsens_position_message;
+
+	warnx("xsens_lat: %f", xsens_position->lat);
+	warnx("xsens_lon: %f", xsens_position->lon);
+	warnx("xsens_alt: %f", xsens_position->alt);
+
+	_gps_position->lat = xsens_position->lat;
+	_gps_position->lon = xsens_position->lon;
+	_gps_position->alt = xsens_position->alt;
+	_gps_position->timestamp_position = hrt_absolute_time();
+	_gps_position->fix_type = 3;
 
 	_rx_header_lgth += xsens_position_lgth;
 #endif
@@ -332,8 +381,21 @@ XSENS_PARSER::handle_message()
 	char _xsens_velocity_message[xsens_velocity_lgth];
 	memcpy(_xsens_velocity_message, &(_rx_buffer[_rx_header_lgth]), xsens_velocity_lgth);
 
+	swapBytes(_xsens_velocity_message, xsens_velocity_lgth);
+
 	xsens_velocity_data_t *xsens_velocity;
 	xsens_velocity = (xsens_velocity_data_t *) _xsens_velocity_message;
+
+	warnx("xsens_velx: %f", xsens_velocity->velx);
+	warnx("xsens_vely: %f", xsens_velocity->vely);
+	warnx("xsens_velz: %f", xsens_velocity->velz);
+
+	_gps_position->vel_n_m_s = xsens_velocity->velx;
+	_gps_position->vel_e_m_s = xsens_velocity->vely;
+	_gps_position->vel_d_m_s = xsens_velocity->velz;
+	_gps_position->vel_ned_valid = true;
+	_gps_position->timestamp_velocity = hrt_absolute_time();
+	_gps_position->fix_type = 3;
 
 	_rx_header_lgth += xsens_velocity_lgth;
 #endif
@@ -344,6 +406,8 @@ XSENS_PARSER::handle_message()
 	xsens_status_t *xsens_status;
 	xsens_status->status = _rx_buffer[_rx_header_lgth];
 
+	warnx("status: %d", xsens_status->status);
+
 	_rx_header_lgth += xsens_status_lgth;
 #endif
 
@@ -351,6 +415,8 @@ XSENS_PARSER::handle_message()
 	unsigned xsens_sample_lgth = 2;
 	char _xsens_sample_message[xsens_sample_lgth];
 	memcpy(_xsens_sample_message, &(_rx_buffer[_rx_header_lgth]), xsens_sample_lgth);
+
+	swapBytes(_xsens_sample_message, xsens_sample_lgth);
 
 	xsens_sample_counter_t *xsens_sample;
 	xsens_sample = (xsens_sample_counter_t *) _xsens_sample_message;
@@ -363,55 +429,24 @@ XSENS_PARSER::handle_message()
 	char _xsens_utc_message[xsens_utc_lgth];
 	memcpy(_xsens_utc_message, &(_rx_buffer[_rx_header_lgth]), xsens_utc_lgth);
 
+	swapBytes(_xsens_utc_message, xsens_utc_lgth);
+
 	xsens_utc_time_t *xsens_utc;
 	xsens_utc = (xsens_utc_time_t *) _xsens_utc_message;
+
+	warnx("status: %d", xsens_utc->status);
+	warnx("year: %d", xsens_utc->year);
+	warnx("month: %d", xsens_utc->month);
+	warnx("day: %d", xsens_utc->day);
+	warnx("hour: %d", xsens_utc->hour);
+	warnx("minute: %d", xsens_utc->minute);
+	warnx("second: %d", xsens_utc->seconds);
+	warnx("nanoseconds: %d", xsens_utc->nsec);
 
 	_rx_header_lgth += xsens_utc_lgth;
 #endif
 
 /*
-	for (int i = 0; i < _rx_message_lgth; i++){
-		warnx("novatel: _rx_buffer_message[%d]: %x", i, _rx_buffer_message[i]);
-	}
-	warnx("handle message");
-*/
-
-	/*
-	switch (_rx_message_id) {
-		case NOVATEL_BESTPOS:
-			packet_bestpos = (gps_novatel_bestpos_packet_t *) _rx_buffer_message;
-
-			_gps_position->lat = packet_bestpos->lat * 1e7;
-			_gps_position->lon = packet_bestpos->lon * 1e7;
-			_gps_position->alt = packet_bestpos->hgt * 1e3;
-			_gps_position->satellites_visible = packet_bestpos->sat_tracked;
-			_gps_position->timestamp_time = hrt_absolute_time();
-			_gps_position->fix_type = 3;
-
-			//_gps_position->satellite_used = packet_bestpos->sat_used;
-
-			warnx("solstat: %d", packet_bestpos->solstat);
-			warnx("postype: %d", packet_bestpos->postype);
-			warnx("lat: %f", packet_bestpos->lat);
-			warnx("lon: %f", packet_bestpos->lon);
-			warnx("hgt: %f", packet_bestpos->hgt);
-			warnx("undulation: %f", packet_bestpos->undulation);
-			warnx("datum id: %d", packet_bestpos->datum_id_nr);
-			warnx("sigma lat: %f", packet_bestpos->sigma_lat);
-			warnx("sigma lon: %f", packet_bestpos->sigma_lon);
-			warnx("sigma hgt: %f", packet_bestpos->sigma_hgt);
-			warnx("base station id: %d", packet_bestpos->stn_id);
-			warnx("dgps age: %f", packet_bestpos->dgps_age);
-			warnx("solution age: %f", packet_bestpos->sol_age);
-			warnx("sat tracked: %d", packet_bestpos->sat_tracked);
-			warnx("sat used: %d", packet_bestpos->sat_used);
-			warnx("#ggL1: %d", packet_bestpos->ggL1);
-			warnx("#ggL1L2: %d", packet_bestpos->ggL1L2);
-			warnx("extended solution status: %d", packet_bestpos->ext_sol_stat);
-			warnx("signals used mask: %d", packet_bestpos->sig_mask);
-
-			ret = 1;
-			break;
 		case NOVATEL_BESTVEL:
 			packet_bestvel = (gps_novatel_bestvel_packet_t *) _rx_buffer_message;
 
@@ -454,40 +489,35 @@ XSENS_PARSER::decode_init()
 {
 	_decode_state = XSENS_DECODE_UNINIT;
 	_rx_count = 0;
-	_rx_header_lgth = 0;
-	_rx_message_id = 0;
 	_rx_message_lgth = 0;
-	_rx_crc = 0;
+	_rx_header_lgth = 3;
 }
 
 unsigned long
-XSENS_PARSER::calculate_block_crc32(unsigned long message_lgth, unsigned char *data)
+XSENS_PARSER::calculate_checksum(unsigned long message_lgth, unsigned char *data)
 {
 	unsigned long ulTemp1;
 	unsigned long ulTemp2;
-	unsigned long ulCRC = 0;
+	unsigned long ulChecksum = 0;
+	int i = 0;
 	while ( message_lgth-- != 0 )
 	{
-		ulTemp1 = ( ulCRC >> 8 ) & 0x00FFFFFFL;
-		ulTemp2 = CRC32Value( ((int) ulCRC ^ *data++ ) & 0xff );
-		ulCRC = ulTemp1 ^ ulTemp2;
+		ulChecksum += (unsigned long) data[i];
+		i++;
 	}
-	return ulCRC;
+	return ulChecksum;
 }
 
-unsigned long
-XSENS_PARSER::CRC32Value(int i)
+void
+XSENS_PARSER::swapBytes(char* message, unsigned size)
 {
-	int j;
-	unsigned long ulCRC;
-	ulCRC = i;
-	for ( j = 8 ; j > 0; j-- )
+	for(int i = 0; i < (size / 2); i++)
 	{
-		if ( ulCRC & 1 )
-			ulCRC = ( ulCRC >> 1 ) ^ CRC32_POLYNOMIAL;
-		else
-			ulCRC >>= 1;
+		_messageSwapped[i] = message[size-1-i];
+		_messageSwapped[size-1-i] = message[i];
+		message[i] = _messageSwapped[i];
+		message[size-1-i] = _messageSwapped[size-1-i];
 	}
-	return ulCRC;
+	return;
 }
 

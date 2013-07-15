@@ -286,7 +286,7 @@ XSENS::task_main()
 
 		_Helper = new XSENS_PARSER(_serial_fd, &_report);
 
-		warnx("xsens: task main started");
+		//warnx("xsens: task main started");
 
 		unlock();
 		if (_Helper->configure(_baudrate) == 0) {
@@ -294,7 +294,7 @@ XSENS::task_main()
 
 			// XSENS is obviously detected successfully, reset statistics
 			_Helper->reset_update_rates();
-			warnx("xsens detected");
+			//warnx("xsens detected");
 
 			while (_Helper->receive(TIMEOUT_5HZ) > 0 && !_task_should_exit) {
 //				lock();

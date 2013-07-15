@@ -68,8 +68,8 @@ KalmanNav::KalmanNav(SuperBlock *parent, const char *name) :
 	q(),
 	// subscriptions
 	_sensors(&getSubscriptions(), ORB_ID(sensor_combined), 5), // limit to 200 Hz
-	//_gps(&getSubscriptions(), ORB_ID(vehicle_gps_position), 100), // limit to 10 Hz
-	_gps(&getSubscriptions(), ORB_ID(xsens_vehicle_gps_position), 100), // take the gps info from the xsens, limit to 10 Hz
+	_gps(&getSubscriptions(), ORB_ID(vehicle_gps_position), 100), // limit to 10 Hz
+	//_gps(&getSubscriptions(), ORB_ID(xsens_vehicle_gps_position), 100), // take the gps info from the xsens, limit to 10 Hz
 	_param_update(&getSubscriptions(), ORB_ID(parameter_update), 1000), // limit to 1 Hz
 	// publications
 	_pos(&getPublications(), ORB_ID(vehicle_global_position)),
