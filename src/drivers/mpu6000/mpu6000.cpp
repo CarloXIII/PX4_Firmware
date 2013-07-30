@@ -35,6 +35,9 @@
  * @file mpu6000.cpp
  *
  * Driver for the Invensense MPU6000 connected via SPI.
+ *
+ * @author Andrew Tridgell
+ * @author Pat Hickey
  */
 
 #include <nuttx/config.h>
@@ -191,6 +194,7 @@ private:
 	orb_advert_t		_gyro_topic;
 
 	unsigned		_reads;
+	unsigned		_sample_rate;
 	perf_counter_t		_sample_perf;
 
 	/**
@@ -272,6 +276,11 @@ private:
 	 */
 	void _set_dlpf_filter(uint16_t frequency_hz);
 
+	/*
+	  set sample rate (approximate) - 1kHz to 5Hz
+	*/
+	void _set_sample_rate(uint16_t desired_sample_rate_hz);
+
 };
 
 /**
@@ -309,6 +318,7 @@ MPU6000::MPU6000(int bus, spi_dev_e device) :
 	_gyro_range_rad_s(0.0f),
 	_gyro_topic(-1),
 	_reads(0),
+	_sample_rate(500),
 	_sample_perf(perf_alloc(PC_ELAPSED, "mpu6000_read"))
 {
 	// disable debug() calls
@@ -361,10 +371,6 @@ MPU6000::init()
 		return ret;
 	}
 
-	/* advertise sensor topics */
-	_accel_topic = orb_advertise(ORB_ID(sensor_accel), &_accel_report);
-	_gyro_topic = orb_advertise(ORB_ID(sensor_gyro), &_gyro_report);
-
 	// Chip reset
 	write_reg(MPUREG_PWR_MGMT_1, BIT_H_RESET);
 	up_udelay(10000);
@@ -378,7 +384,8 @@ MPU6000::init()
 	up_udelay(1000);
 
 	// SAMPLE RATE
-	write_reg(MPUREG_SMPLRT_DIV, 0x04);     // Sample rate = 200Hz    Fsample= 1Khz/(4+1) = 200Hz
+	//write_reg(MPUREG_SMPLRT_DIV, 0x04);     // Sample rate = 200Hz    Fsample= 1Khz/(4+1) = 200Hz
+	_set_sample_rate(_sample_rate); // default sample rate = 200Hz
 	usleep(1000);
 
 	// FS & DLPF   FS=2000 deg/s, DLPF = 20Hz (low pass filter)
@@ -457,9 +464,17 @@ MPU6000::init()
 	/* do CDev init for the gyro device node, keep it optional */
 	int gyro_ret = _gyro->init();
 
+	/* ensure we got real values to share */
+	measure();
+
 	if (gyro_ret != OK) {
 		_gyro_topic = -1;
+	} else {
+		_gyro_topic = orb_advertise(ORB_ID(sensor_gyro), &_gyro_report);
 	}
+
+	/* advertise sensor topics */
+	_accel_topic = orb_advertise(ORB_ID(sensor_accel), &_accel_report);
 
 	return ret;
 }
@@ -491,6 +506,19 @@ MPU6000::probe()
 
 	debug("unexpected ID 0x%02x", _product);
 	return -EIO;
+}
+
+/*
+  set sample rate (approximate) - 1kHz to 5Hz, for both accel and gyro
+*/
+void
+MPU6000::_set_sample_rate(uint16_t desired_sample_rate_hz)
+{
+  uint8_t div = 1000 / desired_sample_rate_hz;
+  if(div>200) div=200;
+  if(div<1) div=1;
+  write_reg(MPUREG_SMPLRT_DIV, div-1);
+  _sample_rate = 1000 / div;
 }
 
 /*
@@ -642,10 +670,12 @@ MPU6000::ioctl(struct file *filp, int cmd, unsigned long arg)
 		return -EINVAL;
 
 
-	case ACCELIOCSSAMPLERATE:
 	case ACCELIOCGSAMPLERATE:
-		/* XXX not implemented */
-		return -EINVAL;
+		return _sample_rate;
+
+	case ACCELIOCSSAMPLERATE:
+	  _set_sample_rate(arg);
+	  return OK;
 
 	case ACCELIOCSLOWPASS:
 	case ACCELIOCGLOWPASS:
@@ -671,12 +701,13 @@ MPU6000::ioctl(struct file *filp, int cmd, unsigned long arg)
 		return OK;
 
 	case ACCELIOCSRANGE:
-	case ACCELIOCGRANGE:
 		/* XXX not implemented */
 		// XXX change these two values on set:
 		// _accel_range_scale = (9.81f / 4096.0f);
-		// _accel_range_rad_s = 8.0f * 9.81f;
+		// _accel_range_m_s2 = 8.0f * 9.81f;
 		return -EINVAL;
+	case ACCELIOCGRANGE:
+		return _accel_range_m_s2;
 
 	case ACCELIOCSELFTEST:
 		return self_test();
@@ -700,10 +731,12 @@ MPU6000::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 	case SENSORIOCRESET:
 		return ioctl(filp, cmd, arg);
 
-	case GYROIOCSSAMPLERATE:
 	case GYROIOCGSAMPLERATE:
-		/* XXX not implemented */
-		return -EINVAL;
+		return _sample_rate;
+
+	case GYROIOCSSAMPLERATE:
+		_set_sample_rate(arg);
+		return OK;
 
 	case GYROIOCSLOWPASS:
 	case GYROIOCGLOWPASS:
@@ -721,12 +754,13 @@ MPU6000::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 		return OK;
 
 	case GYROIOCSRANGE:
-	case GYROIOCGRANGE:
 		/* XXX not implemented */
 		// XXX change these two values on set:
 		// _gyro_range_scale = xx
-		// _gyro_range_m_s2 = xx
+		// _gyro_range_rad_s = xx
 		return -EINVAL;
+	case GYROIOCGRANGE:
+		return _gyro_range_rad_s;
 
 	case GYROIOCSELFTEST:
 		return self_test();
@@ -1045,7 +1079,8 @@ start()
 	int fd;
 
 	if (g_dev != nullptr)
-		errx(1, "already started");
+		/* if already started, the still command succeeded */
+		errx(0, "already started");
 
 	/* create the driver */
 	g_dev = new MPU6000(1 /* XXX magic number */, (spi_dev_e)PX4_SPIDEV_MPU);

@@ -135,6 +135,7 @@ int preflight_check_main(int argc, char *argv[])
 
 	close(fd);
 	fd = open(BARO_DEVICE_PATH, 0);
+	close(fd);
 
 	/* ---- RC CALIBRATION ---- */
 
@@ -145,6 +146,15 @@ int preflight_check_main(int argc, char *argv[])
 
 	bool rc_ok = true;
 	char nbuf[20];
+
+	/* first check channel mappings */
+			/* check which map param applies */
+		// if (map_by_channel[i] >= MAX_CONTROL_CHANNELS) {
+		// 	mavlink_log_critical(mavlink_fd, "ERR: RC_%d_MAP >= # CHANS", i+1);
+		// 	/* give system time to flush error message in case there are more */
+		// 	usleep(100000);
+		// 	count++;
+		// }
 
 	for (int i = 0; i < 12; i++) {
 		/* should the channel be enabled? */
@@ -209,8 +219,8 @@ int preflight_check_main(int argc, char *argv[])
 			count++;
 		}
 
-		/* XXX needs inspection of all the _MAP params */
-		// if (conf[PX4IO_P_RC_CONFIG_ASSIGNMENT] >= MAX_CONTROL_CHANNELS) {
+		/* check which map param applies */
+		// if (map_by_channel[i] >= MAX_CONTROL_CHANNELS) {
 		// 	mavlink_log_critical(mavlink_fd, "ERR: RC_%d_MAP >= # CHANS", i+1);
 		// 	/* give system time to flush error message in case there are more */
 		// 	usleep(100000);
@@ -241,6 +251,11 @@ system_eval:
 
 		int buzzer = open("/dev/tone_alarm", O_WRONLY);
 		int leds = open(LED_DEVICE_PATH, 0);
+
+		if (leds < 0) {
+			close(buzzer);
+			errx(1, "failed to open leds, aborting");
+		}
 
 		/* flip blue led into alternating amber */
 		led_off(leds, LED_BLUE);

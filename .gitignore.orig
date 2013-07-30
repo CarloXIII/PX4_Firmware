@@ -1,0 +1,33 @@
+*.d
+!ROMFS/*/*.d
+!ROMFS/*/*/*.d
+!ROMFS/*/*/*/*.d
+*.dSYM
+*.o
+*.pyc
+*~
+.*.swp
+.context
+.cproject
+.DS_Store
+.gdbinit
+.project
+.settings
+.swp
+.~lock.*
+Archives/*
+Build/*
+core
+cscope.out
+dot.gdbinit
+Firmware.sublime-workspace
+Images/*.bin
+Images/*.px4
+mavlink/include/mavlink/v0.9/
+<<<<<<< HEAD
+html/
+doxy.log
+Doxyfile
+=======
+NuttX
+>>>>>>> github/master

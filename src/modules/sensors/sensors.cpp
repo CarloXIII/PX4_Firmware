@@ -60,6 +60,7 @@
 #include <drivers/drv_baro.h>
 #include <drivers/drv_rc_input.h>
 #include <drivers/drv_adc.h>
+#include <drivers/drv_airspeed.h>
 
 #include <systemlib/systemlib.h>
 #include <systemlib/param/param.h>
@@ -139,14 +140,12 @@ public:
 private:
 	static const unsigned _rc_max_chan_count = RC_CHANNELS_MAX;	/**< maximum number of r/c channels we handle */
 
-#if CONFIG_HRT_PPM
 	hrt_abstime	_ppm_last_valid;		/**< last time we got a valid ppm signal */
 
 	/**
 	 * Gather and publish PPM input data.
 	 */
 	void		ppm_poll();
-#endif
 
 	/* XXX should not be here - should be own driver */
 	int 		_fd_adc;			/**< ADC driver handle */
@@ -194,11 +193,12 @@ private:
 		float scaling_factor[_rc_max_chan_count];
 
 		float gyro_offset[3];
+		float gyro_scale[3];
 		float mag_offset[3];
 		float mag_scale[3];
 		float accel_offset[3];
 		float accel_scale[3];
-		int diff_pres_offset_pa;
+		float diff_pres_offset_pa;
 
 		int rc_type;
 
@@ -229,6 +229,9 @@ private:
 		float rc_scale_flaps;
 
 		float battery_voltage_scaling;
+
+		int   rc_rl1_DSM_VCC_control;
+
 	}		_parameters;			/**< local copies of interesting parameters */
 
 	struct {
@@ -243,6 +246,7 @@ private:
 		param_t rc_demix;
 
 		param_t gyro_offset[3];
+		param_t gyro_scale[3];
 		param_t accel_offset[3];
 		param_t accel_scale[3];
 		param_t mag_offset[3];
@@ -276,6 +280,9 @@ private:
 		param_t rc_scale_flaps;
 
 		param_t battery_voltage_scaling;
+
+		param_t rc_rl1_DSM_VCC_control;
+
 	}		_parameter_handles;		/**< handles for interesting parameters */
 
 
@@ -387,13 +394,11 @@ namespace sensors
 #endif
 static const int ERROR = -1;
 
-Sensors	*g_sensors;
+Sensors	*g_sensors = nullptr;
 }
 
 Sensors::Sensors() :
-#ifdef CONFIG_HRT_PPM
 	_ppm_last_valid(0),
-#endif
 
 	_fd_adc(-1),
 	_last_adc(0),
@@ -486,6 +491,9 @@ Sensors::Sensors() :
 	_parameter_handles.gyro_offset[0] = param_find("SENS_GYRO_XOFF");
 	_parameter_handles.gyro_offset[1] = param_find("SENS_GYRO_YOFF");
 	_parameter_handles.gyro_offset[2] = param_find("SENS_GYRO_ZOFF");
+	_parameter_handles.gyro_scale[0] = param_find("SENS_GYRO_XSCALE");
+	_parameter_handles.gyro_scale[1] = param_find("SENS_GYRO_YSCALE");
+	_parameter_handles.gyro_scale[2] = param_find("SENS_GYRO_ZSCALE");
 
 	/* accel offsets */
 	_parameter_handles.accel_offset[0] = param_find("SENS_ACC_XOFF");
@@ -508,6 +516,9 @@ Sensors::Sensors() :
 	_parameter_handles.diff_pres_offset_pa = param_find("SENS_DPRES_OFF");
 
 	_parameter_handles.battery_voltage_scaling = param_find("BAT_V_SCALING");
+
+	/* DSM VCC relay control */
+	_parameter_handles.rc_rl1_DSM_VCC_control = param_find("RC_RL1_DSM_VCC");
 
 	/* fetch initial parameter values */
 	parameters_update();
@@ -546,25 +557,11 @@ Sensors::parameters_update()
 	/* rc values */
 	for (unsigned int i = 0; i < RC_CHANNELS_MAX; i++) {
 
-		if (param_get(_parameter_handles.min[i], &(_parameters.min[i])) != OK) {
-			warnx("Failed getting min for chan %d", i);
-		}
-
-		if (param_get(_parameter_handles.trim[i], &(_parameters.trim[i])) != OK) {
-			warnx("Failed getting trim for chan %d", i);
-		}
-
-		if (param_get(_parameter_handles.max[i], &(_parameters.max[i])) != OK) {
-			warnx("Failed getting max for chan %d", i);
-		}
-
-		if (param_get(_parameter_handles.rev[i], &(_parameters.rev[i])) != OK) {
-			warnx("Failed getting rev for chan %d", i);
-		}
-
-		if (param_get(_parameter_handles.dz[i], &(_parameters.dz[i])) != OK) {
-			warnx("Failed getting dead zone for chan %d", i);
-		}
+		param_get(_parameter_handles.min[i], &(_parameters.min[i]));
+		param_get(_parameter_handles.trim[i], &(_parameters.trim[i]));
+		param_get(_parameter_handles.max[i], &(_parameters.max[i]));
+		param_get(_parameter_handles.rev[i], &(_parameters.rev[i]));
+		param_get(_parameter_handles.dz[i], &(_parameters.dz[i]));
 
 		_parameters.scaling_factor[i] = (1.0f / ((_parameters.max[i] - _parameters.min[i]) / 2.0f) * _parameters.rev[i]);
 
@@ -654,21 +651,10 @@ Sensors::parameters_update()
 		warnx("Failed getting mode aux 5 index");
 	}
 
-	if (param_get(_parameter_handles.rc_scale_roll, &(_parameters.rc_scale_roll)) != OK) {
-		warnx("Failed getting rc scaling for roll");
-	}
-
-	if (param_get(_parameter_handles.rc_scale_pitch, &(_parameters.rc_scale_pitch)) != OK) {
-		warnx("Failed getting rc scaling for pitch");
-	}
-
-	if (param_get(_parameter_handles.rc_scale_yaw, &(_parameters.rc_scale_yaw)) != OK) {
-		warnx("Failed getting rc scaling for yaw");
-	}
-
-	if (param_get(_parameter_handles.rc_scale_flaps, &(_parameters.rc_scale_flaps)) != OK) {
-		warnx("Failed getting rc scaling for flaps");
-	}
+	param_get(_parameter_handles.rc_scale_roll, &(_parameters.rc_scale_roll));
+	param_get(_parameter_handles.rc_scale_pitch, &(_parameters.rc_scale_pitch));
+	param_get(_parameter_handles.rc_scale_yaw, &(_parameters.rc_scale_yaw));
+	param_get(_parameter_handles.rc_scale_flaps, &(_parameters.rc_scale_flaps));
 
 	/* update RC function mappings */
 	_rc.function[THROTTLE] = _parameters.rc_map_throttle - 1;
@@ -696,6 +682,9 @@ Sensors::parameters_update()
 	param_get(_parameter_handles.gyro_offset[0], &(_parameters.gyro_offset[0]));
 	param_get(_parameter_handles.gyro_offset[1], &(_parameters.gyro_offset[1]));
 	param_get(_parameter_handles.gyro_offset[2], &(_parameters.gyro_offset[2]));
+	param_get(_parameter_handles.gyro_scale[0], &(_parameters.gyro_scale[0]));
+	param_get(_parameter_handles.gyro_scale[1], &(_parameters.gyro_scale[1]));
+	param_get(_parameter_handles.gyro_scale[2], &(_parameters.gyro_scale[2]));
 
 	/* accel offsets */
 	param_get(_parameter_handles.accel_offset[0], &(_parameters.accel_offset[0]));
@@ -720,6 +709,11 @@ Sensors::parameters_update()
 	/* scaling of ADC ticks to battery voltage */
 	if (param_get(_parameter_handles.battery_voltage_scaling, &(_parameters.battery_voltage_scaling)) != OK) {
 		warnx("Failed updating voltage scaling param");
+	}
+
+	/* relay 1 DSM VCC control */
+	if (param_get(_parameter_handles.rc_rl1_DSM_VCC_control, &(_parameters.rc_rl1_DSM_VCC_control)) != OK) {
+		warnx("Failed updating relay 1 DSM VCC control");
 	}
 
 	return OK;
@@ -983,11 +977,11 @@ Sensors::parameter_update_poll(bool forced)
 		int fd = open(GYRO_DEVICE_PATH, 0);
 		struct gyro_scale gscale = {
 			_parameters.gyro_offset[0],
-			1.0f,
+			_parameters.gyro_scale[0],
 			_parameters.gyro_offset[1],
-			1.0f,
+			_parameters.gyro_scale[1],
 			_parameters.gyro_offset[2],
-			1.0f,
+			_parameters.gyro_scale[2],
 		};
 
 		if (OK != ioctl(fd, GYROIOCSSCALE, (long unsigned int)&gscale))
@@ -1024,6 +1018,20 @@ Sensors::parameter_update_poll(bool forced)
 			warn("WARNING: failed to set scale / offsets for mag");
 
 		close(fd);
+
+		fd = open(AIRSPEED_DEVICE_PATH, 0);
+
+		/* this sensor is optional, abort without error */
+
+		if (fd > 0) {
+			struct airspeed_scale airscale = {
+				_parameters.diff_pres_offset_pa,
+				1.0f,
+			};
+
+			if (OK != ioctl(fd, AIRSPEEDIOCSSCALE, (long unsigned int)&airscale))
+				warn("WARNING: failed to set scale / offsets for airspeed sensor");
+		}
 
 #if 0
 		printf("CH0: RAW MAX: %d MIN %d S: %d MID: %d FUNC: %d\n", (int)_parameters.max[0], (int)_parameters.min[0], (int)(_rc.chan[0].scaling_factor * 10000), (int)(_rc.chan[0].mid), (int)_rc.function[0]);
@@ -1115,16 +1123,18 @@ Sensors::adc_poll(struct sensor_combined_s &raw)
 	}
 }
 
-#if CONFIG_HRT_PPM
 void
 Sensors::ppm_poll()
 {
 
 	/* read low-level values from FMU or IO RC inputs (PPM, Spektrum, S.Bus) */
-	bool rc_updated;
-	orb_check(_rc_sub, &rc_updated);
+	struct pollfd fds[1];
+	fds[0].fd = _rc_sub;
+	fds[0].events = POLLIN;
+	/* check non-blocking for new data */
+	int poll_ret = poll(fds, 1, 0);
 
-	if (rc_updated) {
+	if (poll_ret > 0) {
 		struct rc_input_values	rc_input;
 
 		orb_copy(ORB_ID(input_rc), _rc_sub, &rc_input);
@@ -1312,7 +1322,6 @@ Sensors::ppm_poll()
 	}
 
 }
-#endif
 
 void
 Sensors::task_main_trampoline(int argc, char *argv[])
@@ -1425,10 +1434,8 @@ Sensors::task_main()
 		if (_publishing)
 			orb_publish(ORB_ID(sensor_combined), _sensor_pub, &raw);
 
-#ifdef CONFIG_HRT_PPM
 		/* Look for new r/c input data */
 		ppm_poll();
-#endif
 
 		perf_end(_loop_perf);
 	}
@@ -1445,7 +1452,7 @@ Sensors::start()
 	ASSERT(_sensors_task == -1);
 
 	/* start the task */
-	_sensors_task = task_spawn("sensors_task",
+	_sensors_task = task_spawn_cmd("sensors_task",
 				   SCHED_DEFAULT,
 				   SCHED_PRIORITY_MAX - 5,
 				   2048,
@@ -1468,7 +1475,7 @@ int sensors_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "start")) {
 
 		if (sensors::g_sensors != nullptr)
-			errx(1, "sensors task already running");
+			errx(0, "sensors task already running");
 
 		sensors::g_sensors = new Sensors;
 
@@ -1502,6 +1509,7 @@ int sensors_main(int argc, char *argv[])
 		}
 	}
 
-	errx(1, "unrecognized command");
+	warnx("unrecognized command");
+	return 1;
 }
 
