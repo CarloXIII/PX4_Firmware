@@ -81,9 +81,9 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 	int32_t vel_d; /**< NED down velocity, cm/s */
 	int32_t vel_e; /**< NED east velocity, cm/s */
 	int32_t vel_n; /**< NED north velocity, cm/s */
-	int32_t alt; /**< Height above mean sea level, mm */
-	int32_t lon; /**< Longitude, deg*1e-7 */
-	int32_t lat; /**< Latitude, deg*1e-7 */
+	int32_t alt; /**< Height above mean sea level, m */
+	int32_t lon; /**< Longitude, deg */
+	int32_t lat; /**< Latitude, deg */
 	uint32_t itow; /**< GPS Millisecond Time of Week, ms */
 	uint8_t bprs; /**< Pressure sensor status. When the value decreases, new pressure data is available */
 	uint16_t press; /**< Pressure, Pa*2 */
@@ -173,7 +173,7 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 class XSENS_PARSER : public XSENS_Helper
 {
 public:
-	XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position);
+	XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s  *xsens_sensor_combined);
 	~XSENS_PARSER();
 	int				receive(unsigned timeout);
 	int				configure(unsigned &baudrate);
@@ -203,6 +203,7 @@ private:
 
 	int					_fd;
 	struct xsens_vehicle_gps_position_s *_gps_position;
+	struct xsens_sensor_combined_s *_xsens_sensor_combined;
 	xsens_decode_state_t	_decode_state;
 	uint8_t				_xsens_revision;
 	uint8_t				_rx_header_lgth;

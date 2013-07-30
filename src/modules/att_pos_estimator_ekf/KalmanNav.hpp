@@ -53,6 +53,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/sensor_combined.h>
+#include <uORB/topics/xsens_sensor_combined.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/xsens_vehicle_gps_position.h>
 #include <uORB/topics/parameter_update.h>

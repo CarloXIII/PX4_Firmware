@@ -42,6 +42,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/xsens_vehicle_gps_position.h>
+#include <uORB/topics/xsens_sensor_combined.h>
 
 class XSENS_Helper
 {

@@ -47,21 +47,22 @@
 
 #define XSENS_GPS_PVT 0
 #define XSENS_TEMP 1
-#define XSENS_CALIBRATED_DATA 0
+#define XSENS_CALIBRATED_DATA 1
 #define XSENS_ORIENTATION_QUATERNION 0
-#define XSENS_ORIENTATION_EULER 1
+#define XSENS_ORIENTATION_EULER 0
 #define XSENS_ORIENTATION_MATRIX 0
 #define XSENS_AUXILIARY 0
-#define XSENS_POSITION 1
-#define XSENS_VELOCITY 1
+#define XSENS_POSITION 0
+#define XSENS_VELOCITY 0
 #define XSENS_STATUS 1
 #define XSENS_SAMPLE_COUNTER 1
 #define XSENS_UTC_TIME 1
 
 
-XSENS_PARSER::XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position) :
+XSENS_PARSER::XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s *xsens_sensor_combined) :
 _fd(fd),
 _gps_position(gps_position),
+_xsens_sensor_combined(xsens_sensor_combined),
 _xsens_revision(0)
 {
 	decode_init();
@@ -240,9 +241,9 @@ XSENS_PARSER::handle_message()
 	xsens_gps_pvt_t *xsens_gps_pvt;
 	xsens_gps_pvt = (xsens_gps_pvt_t *) _xsens_gps_message;
 
-	_gps_position->lat = xsens_gps_pvt->lat;
-	_gps_position->lon = xsens_gps_pvt->lon;
-	_gps_position->alt = xsens_gps_pvt->alt;
+	_gps_position->lat = xsens_gps_pvt->lat * 1e7;
+	_gps_position->lon = xsens_gps_pvt->lon * 1e7;
+	_gps_position->alt = xsens_gps_pvt->alt * 1e3;
 	//_gps_position->satellites_visible = packet_bestpos->sat_tracked;
 	//_gps_position->vel_m_s = packet_bestvel->hor_spd;
 	//_gps_position->cog_rad = packet_bestvel->trk_gnd;
@@ -293,6 +294,23 @@ XSENS_PARSER::handle_message()
 	warnx("magx: %f", xsens_calibrated->magx);
 	warnx("magy: %f", xsens_calibrated->magy);
 	warnx("magz: %f", xsens_calibrated->magz);
+
+	_xsens_sensor_combined->accelerometer_m_s2[0] = xsens_calibrated->accx;
+	_xsens_sensor_combined->accelerometer_m_s2[1] = xsens_calibrated->accy;
+	_xsens_sensor_combined->accelerometer_m_s2[2] = xsens_calibrated->accz;
+	_xsens_sensor_combined->accelerometer_counter += 1;
+
+	_xsens_sensor_combined->gyro_rad_s[0] = xsens_calibrated->gyrx;
+	_xsens_sensor_combined->gyro_rad_s[1] = xsens_calibrated->gyry;
+	_xsens_sensor_combined->gyro_rad_s[2] = xsens_calibrated->gyrz;
+	_xsens_sensor_combined->gyro_counter += 1;
+
+	_xsens_sensor_combined->magnetometer_ga[0] = xsens_calibrated->magx;
+	_xsens_sensor_combined->magnetometer_ga[1] = xsens_calibrated->magy;
+	_xsens_sensor_combined->magnetometer_ga[2] = xsens_calibrated->magz;
+	_xsens_sensor_combined->magnetometer_counter += 1;
+
+	_xsens_sensor_combined->timestamp = hrt_absolute_time();
 
 	_rx_header_lgth += xsens_calibrated_lgth;
 #endif
@@ -367,9 +385,9 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_lon: %f", xsens_position->lon);
 	warnx("xsens_alt: %f", xsens_position->alt);
 
-	_gps_position->lat = xsens_position->lat;
-	_gps_position->lon = xsens_position->lon;
-	_gps_position->alt = xsens_position->alt;
+	_gps_position->lat = xsens_position->lat * 1e7;
+	_gps_position->lon = xsens_position->lon * 1e7;
+	_gps_position->alt = xsens_position->alt * 1e3;
 	_gps_position->timestamp_position = hrt_absolute_time();
 	_gps_position->fix_type = 3;
 
@@ -446,40 +464,8 @@ XSENS_PARSER::handle_message()
 	_rx_header_lgth += xsens_utc_lgth;
 #endif
 
-/*
-		case NOVATEL_BESTVEL:
-			packet_bestvel = (gps_novatel_bestvel_packet_t *) _rx_buffer_message;
+	ret = 1;
 
-			_gps_position->vel_m_s = packet_bestvel->hor_spd;
-			_gps_position->cog_rad = packet_bestvel->trk_gnd;
-			_gps_position->vel_n_m_s = packet_bestvel->hor_spd * cosf(packet_bestvel->trk_gnd * M_DEG_TO_RAD_F);
-			_gps_position->vel_e_m_s = packet_bestvel->hor_spd * sinf(packet_bestvel->trk_gnd * M_DEG_TO_RAD_F);
-			_gps_position->vel_d_m_s = -packet_bestvel->vert_spd;
-			_gps_position->vel_ned_valid = true;
-			_gps_position->timestamp_velocity = hrt_absolute_time();
-			_gps_position->fix_type = 3;
-
-			warnx("solstat: %d", packet_bestvel->solstat);
-			warnx("veltype: %d", packet_bestvel->veltype);
-			warnx("latency: %f", packet_bestvel->latency);
-			warnx("dgps age: %f", packet_bestvel->dgps_age);
-			warnx("horizontal speed: %f", packet_bestvel->hor_spd);
-			warnx("flight direction: %f", packet_bestvel->trk_gnd);
-			warnx("north speed: %d", _gps_position->vel_n_m_s);
-			warnx("east speed: %d", _gps_position->vel_e_m_s);
-			warnx("down speed: %d", _gps_position->vel_d_m_s);
-
-			ret = 1;
-			break;
-		default:
-			warnx("NOVATEL: Unknown message received: %d\n", _rx_message_id);
-			ret = -1;
-			return ret;
-			break;
-
-	}
-
-	*/
 	decode_init();
 	return ret;
 }

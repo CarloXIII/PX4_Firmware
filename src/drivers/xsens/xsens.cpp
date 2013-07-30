@@ -99,17 +99,19 @@ public:
 private:
 
 	bool				_task_should_exit;				///< flag to make the main worker task exit
-	int				_serial_fd;					///< serial interface to XSENS
-	unsigned			_baudrate;					///< current baudrate
-	char				_port[20];					///< device / serial port path
-	volatile int			_task;						//< worker task
-	bool				_healthy;					///< flag to signal if the XSENS is ok
+	int					_serial_fd;						///< serial interface to XSENS
+	unsigned			_baudrate;						///< current baudrate
+	char				_port[20];						///< device / serial port path
+	volatile int		_task;							///< worker task
+	bool				_healthy;						///< flag to signal if the XSENS is ok
 	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the XSENS has changed
 	bool				_mode_changed;					///< flag that the XSENS mode has changed
-	XSENS_Helper			*_Helper;					///< instance of XSENS parser
+	XSENS_Helper		*_Helper;						///< instance of XSENS parser
 	struct xsens_vehicle_gps_position_s 	_report;	///< uORB topic for xsens gps position
-	orb_advert_t			_report_pub;					///< uORB pub for gps position
-	float				_rate;						///< position update rate
+	struct xsens_sensor_combined_s			_report_sensor_combined;	///< uORB topic for xsens sensor combined
+	orb_advert_t		_report_pub;					///< uORB pub for gps position
+	orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
+	float				_rate;							///< position update rate
 
 
 	/**
@@ -161,6 +163,7 @@ XSENS::XSENS(const char* uart_path) :
 	_mode_changed(false),
 	_Helper(nullptr),
 	_report_pub(-1),
+	_report_pub_sensor_combined(-1),
 	_rate(0.0f)
 {
 	/* store port name */
@@ -171,6 +174,7 @@ XSENS::XSENS(const char* uart_path) :
 	/* we need this potentially before it could be set in task_main */
 	g_dev = this;
 	memset(&_report, 0, sizeof(_report));
+	memset(&_report_sensor_combined, 0, sizeof(_report_sensor_combined));
 
 	_debug_enabled = true;
 }
@@ -284,7 +288,7 @@ XSENS::task_main()
 		}
 		*/
 
-		_Helper = new XSENS_PARSER(_serial_fd, &_report);
+		_Helper = new XSENS_PARSER(_serial_fd, &_report, &_report_sensor_combined);
 
 		//warnx("xsens: task main started");
 
@@ -304,6 +308,12 @@ XSENS::task_main()
 					orb_publish(ORB_ID(xsens_vehicle_gps_position), _report_pub, &_report);
 				} else {
 					_report_pub = orb_advertise(ORB_ID(xsens_vehicle_gps_position), &_report);
+				}
+
+				if (_report_pub_sensor_combined > 0) {
+					orb_publish(ORB_ID(xsens_sensor_combined), _report_pub_sensor_combined, &_report_sensor_combined);
+				} else {
+					_report_pub_sensor_combined = orb_advertise(ORB_ID(xsens_sensor_combined), &_report_sensor_combined);
 				}
 
 				last_rate_count++;
