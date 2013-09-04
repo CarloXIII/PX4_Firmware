@@ -95,6 +95,7 @@ public:
 	 * Diagnostics - print some basic information about the driver.
 	 */
 	void				print_info();
+	void				print_status();
 
 private:
 
@@ -270,23 +271,6 @@ XSENS::task_main()
 			_Helper = nullptr;
 		}
 
-		/*switch (_mode) {
-			case GPS_DRIVER_MODE_UBX:
-				_Helper = new UBX(_serial_fd, &_report);
-				break;
-			case GPS_DRIVER_MODE_MTK:
-				_Helper = new MTK(_serial_fd, &_report);
-				break;
-			case GPS_DRIVER_MODE_NOVATEL:
-				_Helper = new NOVATEL(_serial_fd, &_report);
-				break;
-			case GPS_DRIVER_MODE_NMEA:
-				//_Helper = new NMEA(); //TODO: add NMEA
-				break;
-			default:
-				break;
-		}
-		*/
 
 		_Helper = new XSENS_PARSER(_serial_fd, &_report, &_report_sensor_combined);
 
@@ -305,7 +289,10 @@ XSENS::task_main()
 				warnx("xsens: receive");
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
-					orb_publish(ORB_ID(xsens_vehicle_gps_position), _report_pub, &_report);
+					if(_Helper->xsens_new_gps_data == true){
+						orb_publish(ORB_ID(xsens_vehicle_gps_position), _report_pub, &_report);
+						_Helper->xsens_new_gps_data = false;
+					}
 				} else {
 					_report_pub = orb_advertise(ORB_ID(xsens_vehicle_gps_position), &_report);
 				}
@@ -342,23 +329,6 @@ XSENS::task_main()
 		}
 		lock();
 
-		/* select next mode */
-		/*
-		switch (_mode) {
-			case GPS_DRIVER_MODE_UBX:
-				_mode = GPS_DRIVER_MODE_MTK;
-				break;
-			case GPS_DRIVER_MODE_MTK:
-				_mode = GPS_DRIVER_MODE_UBX;
-				break;
-		//				case GPS_DRIVER_MODE_NMEA:
-		//					_mode = GPS_DRIVER_MODE_UBX;
-		//					break;
-			default:
-				break;
-		}
-		*/
-
 	}
 	debug("exiting");
 
@@ -380,26 +350,52 @@ XSENS::cmd_reset()
 void
 XSENS::print_info()
 {
-	/*
-	switch (_mode) {
-		case GPS_DRIVER_MODE_UBX:
-			warnx("protocol: UBX");
-			break;
-		case GPS_DRIVER_MODE_MTK:
-			warnx("protocol: MTK");
-			break;
-		case GPS_DRIVER_MODE_NMEA:
-			warnx("protocol: NMEA");
-			break;
-		case GPS_DRIVER_MODE_NOVATEL:
-			warnx("protocol: NOVATEL");
-			break;
-		default:
-			break;
-	}
-	*/
-
 	warnx("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
+	usleep(100000);
+}
+
+void
+XSENS::print_status()
+{
+	printf("\n******\nXSENS data sent to kalman filter (xsens_vehicle_gps_position_s, xsens_sensor_combined_s)");
+	printf("GPS packet:");
+	//printf("\nformat test: %.3f", 334.98376f);
+	printf("\nhorizontal accuracy: %.3f", _report.p_variance_m);
+	printf("\nspeed accuracy: %.3f", _report.s_variance_m_s);
+	printf("\ncourse accuracy: %f", _report.c_variance_rad);
+	printf("\nfix type(3Dfix = 3): %d", _report.fix_type);
+	printf("\nlatitude: %d", _report.lat);
+	printf("\nlongitude: %d", _report.lon);
+	printf("\naltitude gps: %d", _report.alt);
+	printf("\nHDOP: %.3f", _report.eph_m);
+	printf("\nvelocity: %.3f", _report.vel_m_s);
+	printf("\nvelocity N: %.3f", _report.vel_n_m_s);
+	printf("\nvelocity E: %.3f", _report.vel_e_m_s);
+	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp_time)) / 1000000.0f) );
+	printf("\nxsens package rate (not gps): %.3f", _rate );
+	//printf("\ngps data age (bGPS): %.3f", xsens_gps_pvt->bgps );
+	printf("\n******");
+	printf("\nSensor packet:");
+	printf("\naltitude barometer: %.3f", _report_sensor_combined.baro_alt_meter);
+	printf("\npressure barometer: %.3f", _report_sensor_combined.baro_pres_mbar);
+
+	printf("\ngyro x [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[0]);
+	printf("\ngyro y [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[1]);
+	printf("\ngyro z [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[2]);
+
+	printf("\naccel x [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[0]);
+	printf("\naccel y [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[1]);
+	printf("\naccel z [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[2]);
+
+	printf("\nmag x [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[0]);
+	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
+	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
+	printf("\n*****************************************************");
+
+	//xsens::_
+	//errx(0, "PASS");
+	//errx(0, "PASS");
+	//("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
 
 	usleep(100000);
 }
@@ -477,8 +473,11 @@ stop()
 void
 test()
 {
+	if (g_dev == nullptr)
+		errx(1, "driver not running");
 
-	errx(0, "PASS");
+	g_dev->print_status();
+	exit(0);
 }
 
 /**

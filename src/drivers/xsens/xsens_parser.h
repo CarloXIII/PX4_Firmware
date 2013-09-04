@@ -44,21 +44,11 @@
 #define XSENS_BID 0xFF
 #define XSENS_MID 0x32
 
-#define NOVATEL_BESTPOS 0x1
-#define NOVATEL_BESTVEL 0x2
-
-#define CRC32_POLYNOMIAL 0xEDB88320
-
-/*
-#define MTK_OUTPUT_5HZ		"$PMTK220,200*2C\r\n"
-#define MTK_SET_BINARY		"$PGCMD,16,0,0,0,0,0*6A\r\n"
-#define SBAS_ON	        	"$PMTK313,1*2E\r\n"
-#define WAAS_ON				"$PMTK301,2*2E\r\n"
-#define MTK_NAVTHRES_OFF 	"$PMTK397,0*23\r\n"
-
-#define MTK_TIMEOUT_5HZ 400*/
 #define XSENS_BAUDRATE 38400
 
+#define HORIZONTAL_ACCURACY_FOR_FIX 8.0f	// This are the sigma values. Use it to define the fix_type
+#define VERTICAL_ACCURACY_FOR_FIX 12.0f	// of the xsens_vehicle_gps_position message [m]
+#define SPEED_ACCURACY_FOR_FIX 2.0f	// [m/s]
 
 typedef enum {
 	XSENS_DECODE_UNINIT = 0,
@@ -81,9 +71,9 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 	int32_t vel_d; /**< NED down velocity, cm/s */
 	int32_t vel_e; /**< NED east velocity, cm/s */
 	int32_t vel_n; /**< NED north velocity, cm/s */
-	int32_t alt; /**< Height above mean sea level, m */
-	int32_t lon; /**< Longitude, deg */
-	int32_t lat; /**< Latitude, deg */
+	int32_t alt; /**< Height above mean sea level, mm */
+	int32_t lon; /**< Longitude, 1e7*deg */
+	int32_t lat; /**< Latitude, 1e7*deg */
 	uint32_t itow; /**< GPS Millisecond Time of Week, ms */
 	uint8_t bprs; /**< Pressure sensor status. When the value decreases, new pressure data is available */
 	uint16_t press; /**< Pressure, Pa*2 */
@@ -177,7 +167,6 @@ public:
 	~XSENS_PARSER();
 	int				receive(unsigned timeout);
 	int				configure(unsigned &baudrate);
-
 private:
 	/**
 	 * Parse the XSENS packet
@@ -212,6 +201,7 @@ private:
 	char				_messageSwapped[50];
 	unsigned			_rx_count;
 	unsigned long		_calculated_checksum;
+	uint8_t 			xsens_last_bgps;
 };
 
 #endif /* XSENS_PARSER_H_ */

@@ -45,7 +45,7 @@
 
 #include "xsens_parser.h"
 
-#define XSENS_GPS_PVT 0
+#define XSENS_GPS_PVT 1
 #define XSENS_TEMP 1
 #define XSENS_CALIBRATED_DATA 1
 #define XSENS_ORIENTATION_QUATERNION 0
@@ -63,7 +63,8 @@ XSENS_PARSER::XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *g
 _fd(fd),
 _gps_position(gps_position),
 _xsens_sensor_combined(xsens_sensor_combined),
-_xsens_revision(0)
+_xsens_revision(0),
+xsens_last_bgps(255)
 {
 	decode_init();
 }
@@ -226,6 +227,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 int
 XSENS_PARSER::handle_message()
 {
+
 	int ret = 0;
 	char _rx_buffer_message[_rx_message_lgth];
 	memcpy(_rx_buffer_message, &(_rx_buffer[_rx_header_lgth]), _rx_message_lgth);
@@ -241,22 +243,58 @@ XSENS_PARSER::handle_message()
 	xsens_gps_pvt_t *xsens_gps_pvt;
 	xsens_gps_pvt = (xsens_gps_pvt_t *) _xsens_gps_message;
 
-	_gps_position->lat = xsens_gps_pvt->lat * 1e7;
-	_gps_position->lon = xsens_gps_pvt->lon * 1e7;
-	_gps_position->alt = xsens_gps_pvt->alt * 1e3;
-	//_gps_position->satellites_visible = packet_bestpos->sat_tracked;
-	//_gps_position->vel_m_s = packet_bestvel->hor_spd;
-	//_gps_position->cog_rad = packet_bestvel->trk_gnd;
-	_gps_position->vel_n_m_s = xsens_gps_pvt->vel_n;
-	_gps_position->vel_e_m_s = xsens_gps_pvt->vel_e;
-	_gps_position->vel_d_m_s = xsens_gps_pvt->vel_d;
-	_gps_position->vel_ned_valid = true;
-	_gps_position->timestamp_position = hrt_absolute_time();
-	_gps_position->timestamp_velocity = hrt_absolute_time();
-	_gps_position->fix_type = 3;
+	if(xsens_gps_pvt->bgps < xsens_last_bgps ){	//check if GPS data is new
+		_gps_position->lat = xsens_gps_pvt->lat;
+		_gps_position->lon = xsens_gps_pvt->lon;
+		_gps_position->alt = xsens_gps_pvt->alt;
+		_gps_position->p_variance_m = (float) xsens_gps_pvt->hacc / 1000.0f; // For position accuracy, only the horizontal accuracy is taken
+		_gps_position->s_variance_m_s = (float) xsens_gps_pvt->sacc /100.0f;
+		_gps_position->eph_m = 0; //not included in xsens packet
+		_gps_position->epv_m = 0; //not included in xsens packet
+		_gps_position->c_variance_rad = 10000;	// not available with xsens
+		_gps_position->cog_rad = 0;
+		_gps_position->vel_n_m_s = ((float) xsens_gps_pvt->vel_n) * 1e-2f;
+		_gps_position->vel_e_m_s = ((float) xsens_gps_pvt->vel_e) * 1e-2f;
+		_gps_position->vel_d_m_s = ((float) xsens_gps_pvt->vel_d) * 1e-2f;
+		_gps_position->vel_m_s = sqrt(_gps_position->vel_n_m_s * _gps_position->vel_n_m_s + _gps_position->vel_e_m_s * _gps_position->vel_e_m_s);
+		_gps_position->timestamp_position = hrt_absolute_time();
+		_gps_position->timestamp_velocity = hrt_absolute_time();
+		_gps_position->timestamp_variance = hrt_absolute_time();
+		_gps_position->timestamp_time = hrt_absolute_time();
+		_gps_position->time_gps_usec = 0; //not included in xsens packet
+		_gps_position->satellite_info_available = false;	// Satellite information not available with xsens
+		if(_gps_position->s_variance_m_s <= SPEED_ACCURACY_FOR_FIX){
+			_gps_position->vel_ned_valid = true;
+		} else {
+			_gps_position->vel_ned_valid = false;
+		}
 
+		if(_gps_position->p_variance_m <= HORIZONTAL_ACCURACY_FOR_FIX){
+			if(xsens_gps_pvt->vacc <= 1000.0 * VERTICAL_ACCURACY_FOR_FIX){
+				_gps_position->fix_type = 3;
+			} else {
+				_gps_position->fix_type = 2;
+			}
+		} else {
+				_gps_position->fix_type = 1;
+		}
 
+		xsens_new_gps_data = true;
+	} //end if xsens_last_bgps check
+	xsens_last_bgps = xsens_gps_pvt->bgps;
 
+	// Baro pressure to altitude calculation
+	// tropospheric properties (0-11km) for standard atmosphere
+	const float T1 = 15.0 + 273.15;	/* temperature at base height in Kelvin */
+	const float a  = -6.5 / 1000;	/* temperature gradient in degrees per metre */
+	const float g  = 9.80665;	/* gravity constant in m/s/s */
+	const float R  = 287.05;	/* ideal gas constant in J/kg/K */
+	/* current pressure at MSL in kPa */
+	float p1 = 101325.0 / 1000.0;
+	/* measured pressure in kPa */
+	float p = (xsens_gps_pvt->press * 2) / 1000.0f;	// Factor 2 is the scale factor of the XSens
+	_xsens_sensor_combined->baro_alt_meter = (float) (((powf((p / p1), (-(a * R) / g))) * T1) - T1) / a;
+	_xsens_sensor_combined->baro_pres_mbar = (xsens_gps_pvt->press * 2) / 1000.0f;
 	_rx_header_lgth += xsens_gps_lgth;
 #endif
 
@@ -300,9 +338,9 @@ XSENS_PARSER::handle_message()
 	_xsens_sensor_combined->accelerometer_m_s2[2] = xsens_calibrated->accz;
 	_xsens_sensor_combined->accelerometer_counter += 1;
 
-	_xsens_sensor_combined->gyro_rad_s[0] = xsens_calibrated->gyrx;
-	_xsens_sensor_combined->gyro_rad_s[1] = xsens_calibrated->gyry;
-	_xsens_sensor_combined->gyro_rad_s[2] = xsens_calibrated->gyrz;
+	_xsens_sensor_combined->gyro_rad_s[0] = xsens_calibrated->gyrx/2;	// XXX todo: chage normalized to gauss
+	_xsens_sensor_combined->gyro_rad_s[1] = xsens_calibrated->gyry/2; // XXX todo: chage normalized to gauss
+	_xsens_sensor_combined->gyro_rad_s[2] = xsens_calibrated->gyrz/2; // XXX todo: chage normalized to gauss (1gauss = 100*10^-6 Tesla) -> Erdmagnetfeld ca. 50uT=0.5gauss)
 	_xsens_sensor_combined->gyro_counter += 1;
 
 	_xsens_sensor_combined->magnetometer_ga[0] = xsens_calibrated->magx;

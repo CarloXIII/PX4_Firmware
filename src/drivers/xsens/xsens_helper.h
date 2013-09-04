@@ -54,7 +54,7 @@ public:
 	float				get_velocity_update_rate();
 	float				reset_update_rates();
 	float				store_update_rates();
-
+	bool				xsens_new_gps_data;
 protected:
 	uint8_t _rate_count_lat_lon;
 	uint8_t _rate_count_vel;

@@ -1,0 +1,101 @@
+#!nsh
+ 
+# Disable USB and autostart
+set USB no
+set MODE camflyer
+ 
+#
+# Start the ORB (first app to start)
+#
+uorb start
+ 
+#
+# Load microSD params
+#
+echo "[init] loading microSD params"
+param select /fs/microsd/parameters
+if [ -f /fs/microsd/parameters ]
+then
+	param load /fs/microsd/parameters
+fi
+ 
+#
+# Force some key parameters to sane values
+# MAV_TYPE     1 = fixed wing, 2 = quadrotor, 4 = helicopter with tail rotor, 13 = hexarotor
+#              see https://pixhawk.ethz.ch/mavlink/
+#
+param set MAV_TYPE 4
+ 
+
+
+
+
+ 
+#
+# Start MAVLink (depends on orb)
+# USB am FMU Board:
+#mavlink start -d /dev/ttyACM0 -b 57600 
+# UART1:
+mavlink start -d /dev/ttyS0 -b 57600
+usleep 5000
+ 
+#
+# Start the commander (depends on orb, mavlink)
+#
+commander start
+ 
+#
+# Start PX4IO interface (depends on orb, commander)
+#
+px4io start
+ 
+#
+# Allow PX4IO to recover from midair restarts.
+# this is very unlikely, but quite safe and robust.
+px4io recovery
+ 
+#
+# Start the sensors (depends on orb, px4io)
+#
+sh /etc/init.d/rc.sensors
+ 
+#
+# Start GPS interface (depends on orb)
+#
+# gps start
+
+#
+# Start Xsens interface
+#
+xsens start
+ 
+#
+# Start the attitude estimator (depends on orb)
+#
+att_pos_estimator_ekf start
+ 
+#
+# Load mixer and start controllers (depends on px4io)
+#
+#mixer load /dev/pwm_output /etc/mixers/FMU_Q.mix
+mixer load /dev/pwm_output /etc/mixers/IO_pass.mix
+fixedwing_backside start
+ 
+#
+# Start logging
+#
+sdlog2 start -r 100 -a -b 16
+ 
+#
+# Start system state
+#
+if blinkm start
+then
+	echo "using BlinkM for state indication"
+	blinkm systemstate
+else
+	echo "no BlinkM found, OK."
+fi
+
+# falls mavlink auf USB läuft muss console ausgeschaltet werden
+# exit
