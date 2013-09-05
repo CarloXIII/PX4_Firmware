@@ -131,7 +131,7 @@ KalmanNav::KalmanNav(SuperBlock *parent, const char *name) :
 
 
 	// XXX This should be replaced with the xsens subscription. Otherwise the onboard PX4-sensors are used for init.
-	// gyro, accel and mag subscriptions
+	// gyro, accel and mag subscriptions (B.Imbach)
 	_gyro_sub = orb_subscribe(ORB_ID(sensor_gyro));
 	_accel_sub = orb_subscribe(ORB_ID(sensor_accel));
 	_mag_sub = orb_subscribe(ORB_ID(sensor_mag));
