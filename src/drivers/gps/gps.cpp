@@ -86,7 +86,7 @@ static const int ERROR = -1;
 class GPS : public device::CDev
 {
 public:
-	GPS(const char* uart_path);
+	GPS(const char *uart_path);
 	virtual ~GPS();
 
 	virtual int			init();
@@ -157,7 +157,7 @@ GPS	*g_dev;
 }
 
 
-GPS::GPS(const char* uart_path) :
+GPS::GPS(const char *uart_path) :
 	CDev("gps", GPS_DEVICE_PATH),
 	_task_should_exit(false),
 	_healthy(false),
@@ -193,6 +193,7 @@ GPS::~GPS()
 	/* well, kill it anyway, though this will probably crash */
 	if (_task != -1)
 		task_delete(_task);
+
 	g_dev = nullptr;
 
 }
@@ -271,22 +272,27 @@ GPS::task_main()
 		}
 
 		switch (_mode) {
-			case GPS_DRIVER_MODE_UBX:
-				_Helper = new UBX(_serial_fd, &_report);
-				break;
-			case GPS_DRIVER_MODE_MTK:
-				_Helper = new MTK(_serial_fd, &_report);
-				break;
+		case GPS_DRIVER_MODE_UBX:
+			_Helper = new UBX(_serial_fd, &_report);
+			break;
+
+		case GPS_DRIVER_MODE_MTK:
+			_Helper = new MTK(_serial_fd, &_report);
+			break;
 			case GPS_DRIVER_MODE_NOVATEL:
 				_Helper = new NOVATEL(_serial_fd, &_report);
 				break;
+		default:
+			break;
 			case GPS_DRIVER_MODE_NMEA:
 				//_Helper = new NMEA(); //TODO: add NMEA
 				break;
 			default:
 				break;
 		}
+
 		unlock();
+
 		if (_Helper->configure(_baudrate) == 0) {
 			unlock();
 
@@ -298,6 +304,7 @@ GPS::task_main()
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
 					orb_publish(ORB_ID(vehicle_gps_position), _report_pub, &_report);
+
 				} else {
 					_report_pub = orb_advertise(ORB_ID(vehicle_gps_position), &_report);
 				}
@@ -314,10 +321,36 @@ GPS::task_main()
 				}
 
 				if (!_healthy) {
-					warnx("module found");
+					char *mode_str = "unknown";
+
+					switch (_mode) {
+					case GPS_DRIVER_MODE_UBX:
+						mode_str = "UBX";
+						break;
+
+					case GPS_DRIVER_MODE_MTK:
+						mode_str = "MTK";
+						break;
+						
+					case GPS_DRIVER_MODE_NOVATEL:
+						mode_str = "NOVATEL";
+						break;
+
+						
+					case GPS_DRIVER_MODE_NMEA:
+						mode_str = "NMEA";
+						break;
+
+
+					default:
+						break;
+					}
+
+					warnx("module found: %s", mode_str);
 					_healthy = true;
 				}
 			}
+
 			if (_healthy) {
 				warnx("module lost");
 				_healthy = false;
@@ -326,25 +359,35 @@ GPS::task_main()
 
 			lock();
 		}
+
 		lock();
 
 		/* select next mode */
 		switch (_mode) {
-			case GPS_DRIVER_MODE_UBX:
-				_mode = GPS_DRIVER_MODE_MTK;
-				break;
-			case GPS_DRIVER_MODE_MTK:
-				_mode = GPS_DRIVER_MODE_UBX;
-				break;
-		//				case GPS_DRIVER_MODE_NMEA:
-		//					_mode = GPS_DRIVER_MODE_UBX;
-		//					break;
-			default:
-				break;
+		case GPS_DRIVER_MODE_UBX:
+			_mode = GPS_DRIVER_MODE_MTK;
+			break;
+
+		case GPS_DRIVER_MODE_MTK:
+			_mode = GPS_DRIVER_MODE_UBX;
+			break;
+
+		case GPS_DRIVER_MODE_NOVATEL:
+			_mode = GPS_DRIVER_MODE_NOVATEL;
+			break;
+			
+		case GPS_DRIVER_MODE_NMEA:
+			_mode = GPS_DRIVER_MODE_NMEA;
+			break;
+			
+		default:
+			break;
+
 		}
 
 	}
-	debug("exiting");
+
+	warnx("exiting");
 
 	::close(_serial_fd);
 
@@ -365,26 +408,34 @@ void
 GPS::print_info()
 {
 	switch (_mode) {
-		case GPS_DRIVER_MODE_UBX:
-			warnx("protocol: UBX");
-			break;
-		case GPS_DRIVER_MODE_MTK:
-			warnx("protocol: MTK");
-			break;
-		case GPS_DRIVER_MODE_NMEA:
-			warnx("protocol: NMEA");
-			break;
-		case GPS_DRIVER_MODE_NOVATEL:
-			warnx("protocol: NOVATEL");
-			break;
-		default:
-			break;
+	case GPS_DRIVER_MODE_UBX:
+		warnx("protocol: UBX");
+		break;
+
+	case GPS_DRIVER_MODE_MTK:
+		warnx("protocol: MTK");
+		break;
+
+
+	case GPS_DRIVER_MODE_NMEA:
+		warnx("protocol: NMEA");
+		break;
+		
+	case GPS_DRIVER_MODE_NOVATEL:
+		warnx("protocol: NOVATEL");
+		break;
+		
+	default:
+		break;
 	}
+
 	warnx("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
+
 	if (_report.timestamp_position != 0) {
-		warnx("position lock: %dD, last update %4.2f seconds ago", (int)_report.fix_type,
-			(double)((float)(hrt_absolute_time() - _report.timestamp_position) / 1000000.0f));
+		warnx("position lock: %dD, satellites: %d, last update: %fms ago", (int)_report.fix_type,
+				_report.satellites_visible, (hrt_absolute_time() - _report.timestamp_position) / 1000.0f);
 		warnx("lat: %d, lon: %d, alt: %d", _report.lat, _report.lon, _report.alt);
+		warnx("eph: %.2fm, epv: %.2fm", _report.eph_m, _report.epv_m);
 		warnx("rate position: \t%6.2f Hz", (double)_Helper->get_position_update_rate());
 		warnx("rate velocity: \t%6.2f Hz", (double)_Helper->get_velocity_update_rate());
 		warnx("rate publication:\t%6.2f Hz", (double)_rate);
@@ -435,6 +486,7 @@ start(const char *uart_path)
 		errx(1, "Could not open device path: %s\n", GPS_DEVICE_PATH);
 		goto fail;
 	}
+
 	exit(0);
 
 fail:
@@ -510,7 +562,7 @@ gps_main(int argc, char *argv[])
 {
 
 	/* set to default */
-	char* device_name = GPS_DEFAULT_UART_PORT;
+	char *device_name = GPS_DEFAULT_UART_PORT;
 
 	/*
 	 * Start/load the driver.
@@ -520,15 +572,18 @@ gps_main(int argc, char *argv[])
 		if (argc > 3) {
 			if (!strcmp(argv[2], "-d")) {
 				device_name = argv[3];
+
 			} else {
 				goto out;
 			}
 		}
+
 		gps::start(device_name);
 	}
 
 	if (!strcmp(argv[1], "stop"))
 		gps::stop();
+
 	/*
 	 * Test the driver/device.
 	 */
