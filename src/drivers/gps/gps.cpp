@@ -279,16 +279,17 @@ GPS::task_main()
 		case GPS_DRIVER_MODE_MTK:
 			_Helper = new MTK(_serial_fd, &_report);
 			break;
-			case GPS_DRIVER_MODE_NOVATEL:
-				_Helper = new NOVATEL(_serial_fd, &_report);
-				break;
+
+		case GPS_DRIVER_MODE_NOVATEL:
+			_Helper = new NOVATEL(_serial_fd, &_report);
+			break;
+
 		default:
 			break;
-			case GPS_DRIVER_MODE_NMEA:
-				//_Helper = new NMEA(); //TODO: add NMEA
-				break;
-			default:
-				break;
+
+		case GPS_DRIVER_MODE_NMEA:
+			//_Helper = new NMEA(); //TODO: add NMEA
+			break;
 		}
 
 		unlock();
@@ -336,7 +337,6 @@ GPS::task_main()
 						mode_str = "NOVATEL";
 						break;
 
-						
 					case GPS_DRIVER_MODE_NMEA:
 						mode_str = "NMEA";
 						break;
