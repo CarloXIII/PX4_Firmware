@@ -286,7 +286,7 @@ XSENS::task_main()
 
 			while (_Helper->receive(TIMEOUT_5HZ) > 0 && !_task_should_exit) {
 //				lock();
-				warnx("xsens: receive");
+				//warnx("xsens: receive");
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
 					if(_Helper->xsens_new_gps_data == true){

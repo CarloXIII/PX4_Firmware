@@ -150,14 +150,14 @@ int
 XSENS_PARSER::parse_char(uint8_t b)
 {
 	switch (_decode_state) {
-	warnx("decoding");
+	//warnx("decoding");
 		/* First, look for PRE */
 		case XSENS_DECODE_UNINIT:
 			if (b == XSENS_PRE) {
 				_decode_state = XSENS_DECODE_GOT_SYNC1;
 				//_rx_buffer[_rx_count] = b;
 				//_rx_count++;
-				warnx("PRE found");
+				//warnx("PRE found");
 			}
 			break;
 		/* Second, look for BID */
@@ -166,7 +166,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 				_decode_state = XSENS_DECODE_GOT_SYNC2;
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
-				warnx("BID found");
+				//warnx("BID found");
 			} else {
 				/* Second start symbol was wrong, reset state machine */
 				decode_init();
@@ -178,7 +178,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 				_decode_state = XSENS_DECODE_GOT_SYNC3;
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
-				warnx("MID found");
+				//warnx("MID found");
 			} else {
 				/* Third start symbol was wrong, reset state machine */
 				decode_init();
@@ -190,7 +190,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 			_rx_message_lgth = b;
 			_rx_buffer[_rx_count] = b;
 			_rx_count++;
-			warnx("LEN: %x", _rx_message_lgth);
+			//warnx("LEN: %x", _rx_message_lgth);
 			break;
 		/* Get the message */
 		case XSENS_DECODE_GOT_MESSAGE_LGTH:
@@ -308,7 +308,7 @@ XSENS_PARSER::handle_message()
 	xsens_temp_t *xsens_temp;
 	xsens_temp = (xsens_temp_t *) _xsens_temp_message;
 
-	warnx("xsens_temp: %f", xsens_temp->temp);
+	//warnx("xsens_temp: %f", xsens_temp->temp);
 
 	_rx_header_lgth += xsens_temp_lgth;
 #endif
@@ -323,6 +323,7 @@ XSENS_PARSER::handle_message()
 	xsens_calibrated_data_t *xsens_calibrated;
 	xsens_calibrated = (xsens_calibrated_data_t *) _xsens_calibrated_message;
 
+	/*
 	warnx("accx: %f", xsens_calibrated->accx);
 	warnx("accy: %f", xsens_calibrated->accy);
 	warnx("accz: %f", xsens_calibrated->accz);
@@ -332,6 +333,7 @@ XSENS_PARSER::handle_message()
 	warnx("magx: %f", xsens_calibrated->magx);
 	warnx("magy: %f", xsens_calibrated->magy);
 	warnx("magz: %f", xsens_calibrated->magz);
+	*/
 
 	_xsens_sensor_combined->accelerometer_m_s2[0] = xsens_calibrated->accx;
 	_xsens_sensor_combined->accelerometer_m_s2[1] = xsens_calibrated->accy;
@@ -376,9 +378,11 @@ XSENS_PARSER::handle_message()
 	xsens_orientation_euler_t *xsens_euler;
 	xsens_euler = (xsens_orientation_euler_t *) _xsens_euler_message;
 
+	/*
 	warnx("xsens_roll: %f", xsens_euler->roll);
 	warnx("xsens_pitch: %f", xsens_euler->pitch);
 	warnx("xsens_yaw: %f", xsens_euler->yaw);
+	*/
 
 	_rx_header_lgth += xsens_euler_lgth;
 #endif
@@ -419,9 +423,11 @@ XSENS_PARSER::handle_message()
 	xsens_position_data_t *xsens_position;
 	xsens_position = (xsens_position_data_t *) _xsens_position_message;
 
+	/*
 	warnx("xsens_lat: %f", xsens_position->lat);
 	warnx("xsens_lon: %f", xsens_position->lon);
 	warnx("xsens_alt: %f", xsens_position->alt);
+	*/
 
 	_gps_position->lat = xsens_position->lat * 1e7;
 	_gps_position->lon = xsens_position->lon * 1e7;
@@ -442,9 +448,11 @@ XSENS_PARSER::handle_message()
 	xsens_velocity_data_t *xsens_velocity;
 	xsens_velocity = (xsens_velocity_data_t *) _xsens_velocity_message;
 
+	/*
 	warnx("xsens_velx: %f", xsens_velocity->velx);
 	warnx("xsens_vely: %f", xsens_velocity->vely);
 	warnx("xsens_velz: %f", xsens_velocity->velz);
+	*/
 
 	_gps_position->vel_n_m_s = xsens_velocity->velx;
 	_gps_position->vel_e_m_s = xsens_velocity->vely;
@@ -462,7 +470,7 @@ XSENS_PARSER::handle_message()
 	xsens_status_t *xsens_status;
 	xsens_status->status = _rx_buffer[_rx_header_lgth];
 
-	warnx("status: %d", xsens_status->status);
+	//warnx("status: %d", xsens_status->status);
 
 	_rx_header_lgth += xsens_status_lgth;
 #endif
@@ -490,6 +498,7 @@ XSENS_PARSER::handle_message()
 	xsens_utc_time_t *xsens_utc;
 	xsens_utc = (xsens_utc_time_t *) _xsens_utc_message;
 
+	/*
 	warnx("status: %d", xsens_utc->status);
 	warnx("year: %d", xsens_utc->year);
 	warnx("month: %d", xsens_utc->month);
@@ -498,6 +507,7 @@ XSENS_PARSER::handle_message()
 	warnx("minute: %d", xsens_utc->minute);
 	warnx("second: %d", xsens_utc->seconds);
 	warnx("nanoseconds: %d", xsens_utc->nsec);
+	*/
 
 	_rx_header_lgth += xsens_utc_lgth;
 #endif
