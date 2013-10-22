@@ -25,6 +25,7 @@ Images/*.bin
 Images/*.px4
 mavlink/include/mavlink/v0.9/
 html/
-Nuttx
+NuttX
 doxy.log
 Doxyfile
+
