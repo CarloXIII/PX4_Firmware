@@ -49,20 +49,23 @@
 #define XSENS_TEMP 1
 #define XSENS_CALIBRATED_DATA 1
 #define XSENS_ORIENTATION_QUATERNION 0
-#define XSENS_ORIENTATION_EULER 0
+#define XSENS_ORIENTATION_EULER 1
 #define XSENS_ORIENTATION_MATRIX 0
 #define XSENS_AUXILIARY 0
-#define XSENS_POSITION 0
-#define XSENS_VELOCITY 0
+#define XSENS_POSITION 1
+#define XSENS_VELOCITY 1
 #define XSENS_STATUS 1
 #define XSENS_SAMPLE_COUNTER 1
 #define XSENS_UTC_TIME 1
 
 
-XSENS_PARSER::XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s *xsens_sensor_combined) :
+XSENS_PARSER::XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s *xsens_sensor_combined,
+		struct xsens_vehicle_attitude_s *xsens_vehicle_attitude, struct xsens_vehicle_global_position_s *global_position) :
 _fd(fd),
 _gps_position(gps_position),
 _xsens_sensor_combined(xsens_sensor_combined),
+_xsens_vehicle_attitude(xsens_vehicle_attitude),
+_global_position(global_position),
 _xsens_revision(0),
 xsens_last_bgps(255)
 {
@@ -384,6 +387,12 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_yaw: %f", xsens_euler->yaw);
 	*/
 
+	_xsens_vehicle_attitude->roll = xsens_euler->roll;
+	_xsens_vehicle_attitude->pitch = xsens_euler->pitch;
+	_xsens_vehicle_attitude->yaw = xsens_euler->yaw;
+
+	_xsens_vehicle_attitude->timestamp = hrt_absolute_time();
+
 	_rx_header_lgth += xsens_euler_lgth;
 #endif
 
@@ -429,11 +438,11 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_alt: %f", xsens_position->alt);
 	*/
 
-	_gps_position->lat = xsens_position->lat * 1e7;
-	_gps_position->lon = xsens_position->lon * 1e7;
-	_gps_position->alt = xsens_position->alt * 1e3;
-	_gps_position->timestamp_position = hrt_absolute_time();
-	_gps_position->fix_type = 3;
+	_global_position->lat = xsens_position->lat * 1e7;
+	_global_position->lon = xsens_position->lon * 1e7;
+	_global_position->alt = xsens_position->alt * 1e3;
+	_global_position->timestamp_position = hrt_absolute_time();
+	_global_position->fix_type = 3;
 
 	_rx_header_lgth += xsens_position_lgth;
 #endif
@@ -454,12 +463,15 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_velz: %f", xsens_velocity->velz);
 	*/
 
-	_gps_position->vel_n_m_s = xsens_velocity->velx;
-	_gps_position->vel_e_m_s = xsens_velocity->vely;
-	_gps_position->vel_d_m_s = xsens_velocity->velz;
-	_gps_position->vel_ned_valid = true;
-	_gps_position->timestamp_velocity = hrt_absolute_time();
-	_gps_position->fix_type = 3;
+	_global_position->vel_n_m_s = xsens_velocity->velx;
+	_global_position->vel_e_m_s = xsens_velocity->vely;
+	_global_position->vel_d_m_s = xsens_velocity->velz;
+	_global_position->vel_m_s = sqrt(_global_position->vel_n_m_s * _global_position->vel_n_m_s + _global_position->vel_e_m_s * _global_position->vel_e_m_s);
+	_global_position->vel_ned_valid = true;
+	_global_position->timestamp_velocity = hrt_absolute_time();
+	_global_position->fix_type = 3;
+
+	_global_position->timestamp = hrt_absolute_time();
 
 	_rx_header_lgth += xsens_velocity_lgth;
 #endif

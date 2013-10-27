@@ -164,7 +164,7 @@ struct log_STAT_s {
 /* --- RC - RC INPUT CHANNELS --- */
 #define LOG_RC_MSG 11
 struct log_RC_s {
-	float channel[8];
+	float channel[15];
 };
 
 /* --- OUT0 - ACTUATOR_0 OUTPUT --- */
@@ -253,8 +253,66 @@ struct log_GVSP_s {
 	float vz;
 };
 
+/* --- XIMU - XSENS IMU SENSORS --- */
+#define LOG_XIMU_MSG 20
+struct log_XIMU_s {
+	float acc_x;
+	float acc_y;
+	float acc_z;
+	float gyro_x;
+	float gyro_y;
+	float gyro_z;
+	float mag_x;
+	float mag_y;
+	float mag_z;
+};
+
+/* --- XSEN - XSENS OTHER SENSORS --- */
+#define LOG_XSEN_MSG 21
+struct log_XSEN_s {
+	float baro_pres;
+	float baro_alt;
+	float baro_temp;
+	float diff_pres;
+};
+
+/* --- XGPS - XSENS GPS POSITION --- */
+#define LOG_XGPS_MSG 22
+struct log_XGPS_s {
+	uint64_t gps_time;
+	uint8_t fix_type;
+	float eph;
+	float epv;
+	int32_t lat;
+	int32_t lon;
+	float alt;
+	float vel_n;
+	float vel_e;
+	float vel_d;
+	float cog;
+};
+
+/* --- XATT - XSENS ATTITUDE --- */
+#define LOG_XATT_MSG 23
+struct log_XATT_s {
+	float roll;
+	float pitch;
+	float yaw;
+};
+
+/* --- XGPO - XSENS GLOBAL POSITION ESTIMATE --- */
+#define LOG_XGPO_MSG 24
+struct log_XGPO_s {
+	int32_t lat;
+	int32_t lon;
+	float alt;
+	float vel_n;
+	float vel_e;
+	float vel_d;
+};
+
 /* --- FWRV - FIRMWARE REVISION --- */
-#define LOG_FWRV_MSG 20
+#define LOG_FWRV_MSG 25
 struct log_FWRV_s {
 	char    fw_revision[64];
 };
@@ -286,7 +344,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPS, "QBffLLfffff", "GPSTime,FixType,EPH,EPV,Lat,Lon,Alt,VelN,VelE,VelD,Cog"),
 	LOG_FORMAT(ATTC, "ffff", "Roll,Pitch,Yaw,Thrust"),
 	LOG_FORMAT(STAT, "BBBfffBB", "MainState,NavState,ArmState,BatV,BatC,BatRem,BatWarn,Landed"),
-	LOG_FORMAT(RC, "ffffffff", "Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7"),
+	LOG_FORMAT(RC, "fffffffffffffff", "Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Ch8,Ch9,Ch10,Ch11,Ch12,Ch13,Ch14"),
 	LOG_FORMAT(OUT0, "ffffffff", "Out0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
 	LOG_FORMAT(AIRS, "ff", "IndSpeed,TrueSpeed"),
 	LOG_FORMAT(ARSP, "fff", "RollRateSP,PitchRateSP,YawRateSP"),
@@ -295,6 +353,11 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPSP, "BLLfffbBffff", "AltRel,Lat,Lon,Alt,Yaw,LoiterR,LoiterDir,NavCmd,P1,P2,P3,P4"),
 	LOG_FORMAT(ESC, "HBBBHHHHHHfH", "Counter,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
 	LOG_FORMAT(GVSP, "fff", "VX,VY,VZ"),
+	LOG_FORMAT(XIMU, "fffffffff", "AccX,AccY,AccZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ"),
+	LOG_FORMAT(XSEN, "ffff", "BaroPres,BaroAlt,BaroTemp,DiffPres"),
+	LOG_FORMAT(XGPS, "QBffLLfffff", "GPSTime,FixType,EPH,EPV,Lat,Lon,Alt,VelN,VelE,VelD,Cog"),
+	LOG_FORMAT(XATT, "fff", "Roll,Pitch,Yaw"),
+	LOG_FORMAT(XGPO, "LLffff", "Lat,Lon,Alt,VelN,VelE,VelD"),
 	LOG_FORMAT(FWRV,"Z",FW_VERSION_STR),
 };
 

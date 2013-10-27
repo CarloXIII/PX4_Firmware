@@ -82,6 +82,10 @@
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/esc_status.h>
+#include <uORB/topics/xsens_sensor_combined.h>
+#include <uORB/topics/xsens_vehicle_gps_position.h>
+#include <uORB/topics/xsens_vehicle_attitude.h>
+#include <uORB/topics/xsens_vehicle_global_position.h>
 
 #include <systemlib/systemlib.h>
 
@@ -627,6 +631,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct airspeed_s airspeed;
 		struct esc_status_s esc;
 		struct vehicle_global_velocity_setpoint_s global_vel_sp;
+		struct xsens_sensor_combined_s xsens_sensor;
+		struct xsens_vehicle_gps_position_s xsens_gps_pos;
+		struct xsens_vehicle_attitude_s xsens_attitude;
+		struct xsens_vehicle_global_position_s xsens_global_pos;
 	} buf;
 	memset(&buf, 0, sizeof(buf));
 
@@ -651,6 +659,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 		int airspeed_sub;
 		int esc_sub;
 		int global_vel_sp_sub;
+		int xsens_sensor_sub;
+		int xsens_gps_pos_sub;
+		int xsens_attitude_sub;
+		int xsens_global_pos_sub;
 	} subs;
 
 	/* log message buffer: header + body */
@@ -677,6 +689,11 @@ int sdlog2_thread_main(int argc, char *argv[])
 			struct log_GPSP_s log_GPSP;
 			struct log_ESC_s log_ESC;
 			struct log_GVSP_s log_GVSP;
+			struct log_XIMU_s log_XIMU;
+			struct log_XSEN_s log_XSEN;
+			struct log_XGPS_s log_XGPS;
+			struct log_XATT_s log_XATT;
+			struct log_XGPO_s log_XGPO;
 		} body;
 	} log_msg = {
 		LOG_PACKET_HEADER_INIT(0)
@@ -686,7 +703,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 	/* --- IMPORTANT: DEFINE NUMBER OF ORB STRUCTS TO WAIT FOR HERE --- */
 	/* number of messages */
-	const ssize_t fdsc = 20;
+	const ssize_t fdsc = 24;
 	/* Sanity check variable and index */
 	ssize_t fdsc_count = 0;
 	/* file descriptors to wait for */
@@ -812,6 +829,31 @@ int sdlog2_thread_main(int argc, char *argv[])
 	fds[fdsc_count].events = POLLIN;
 	fdsc_count++;
 
+	/* --- XSENS SENSORS COMBINED --- */
+	subs.xsens_sensor_sub = orb_subscribe(ORB_ID(xsens_sensor_combined));
+	fds[fdsc_count].fd = subs.xsens_sensor_sub;
+	fds[fdsc_count].events = POLLIN;
+	fdsc_count++;
+
+	/* --- XSENS GPS POSITION --- */
+	subs.xsens_gps_pos_sub = orb_subscribe(
+			ORB_ID(xsens_vehicle_gps_position));
+	fds[fdsc_count].fd = subs.xsens_gps_pos_sub;
+	fds[fdsc_count].events = POLLIN;
+	fdsc_count++;
+
+	/* --- XSENS ATTITUDE --- */
+	subs.xsens_attitude_sub = orb_subscribe(ORB_ID(xsens_vehicle_attitude));
+	fds[fdsc_count].fd = subs.xsens_attitude_sub;
+	fds[fdsc_count].events = POLLIN;
+	fdsc_count++;
+
+	/* --- XSENS GLOBAL POSITION --- */
+	subs.xsens_global_pos_sub = orb_subscribe(ORB_ID(xsens_vehicle_global_position));
+	fds[fdsc_count].fd = subs.xsens_global_pos_sub;
+	fds[fdsc_count].events = POLLIN;
+	fdsc_count++;
+
 	/* WARNING: If you get the error message below,
 	 * then the number of registered messages (fdsc)
 	 * differs from the number of messages in the above list.
@@ -839,6 +881,13 @@ int sdlog2_thread_main(int argc, char *argv[])
 	uint16_t magnetometer_counter = 0;
 	uint16_t baro_counter = 0;
 	uint16_t differential_pressure_counter = 0;
+
+	/* track changes in xsens_sensor_combined topic */
+	uint16_t xsens_gyro_counter = 0;
+	uint16_t xsens_accelerometer_counter = 0;
+	uint16_t xsens_magnetometer_counter = 0;
+	uint16_t xsens_baro_counter = 0;
+	uint16_t xsens_differential_pressure_counter = 0;
 
 	/* enable logging on start if needed */
 	if (log_on_start)
@@ -1128,7 +1177,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(rc_channels), subs.rc_sub, &buf.rc);
 				log_msg.msg_type = LOG_RC_MSG;
-				/* Copy only the first 8 channels of 14 */
+				/* Copy all of the 14 rc channels*/
 				memcpy(log_msg.body.log_RC.channel, buf.rc.chan, sizeof(log_msg.body.log_RC.channel));
 				LOGBUFFER_WRITE_AND_COUNT(RC);
 			}
@@ -1172,6 +1221,111 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_GVSP.vy = buf.global_vel_sp.vy;
 				log_msg.body.log_GVSP.vz = buf.global_vel_sp.vz;
 				LOGBUFFER_WRITE_AND_COUNT(GVSP);
+			}
+
+			/* --- XSENS SENSOR COMBINED --- */ // XXX NEU
+			if (fds[ifds++].revents & POLLIN) {
+				orb_copy(ORB_ID(xsens_sensor_combined), subs.xsens_sensor_sub, &buf.xsens_sensor);
+				bool write_XIMU = false;
+				bool write_XSEN = false;
+
+				if (buf.xsens_sensor.gyro_counter != xsens_gyro_counter) {
+					xsens_gyro_counter = buf.xsens_sensor.gyro_counter;
+					write_XIMU = true;
+				}
+
+				if (buf.xsens_sensor.accelerometer_counter != xsens_accelerometer_counter) {
+					xsens_accelerometer_counter = buf.xsens_sensor.accelerometer_counter;
+					write_XIMU = true;
+				}
+
+				if (buf.xsens_sensor.magnetometer_counter != xsens_magnetometer_counter) {
+					xsens_magnetometer_counter = buf.xsens_sensor.magnetometer_counter;
+					write_XIMU = true;
+				}
+
+				if (buf.xsens_sensor.baro_counter != xsens_baro_counter) {
+					xsens_baro_counter = buf.xsens_sensor.baro_counter;
+					write_XSEN = true;
+				}
+
+				if (buf.xsens_sensor.differential_pressure_counter
+						!= xsens_differential_pressure_counter) {
+					xsens_differential_pressure_counter =
+							buf.xsens_sensor.differential_pressure_counter;
+					write_XSEN = true;
+				}
+
+				if (write_XIMU) {
+					log_msg.msg_type = LOG_XIMU_MSG;
+					log_msg.body.log_XIMU.gyro_x = buf.xsens_sensor.gyro_rad_s[0];
+					log_msg.body.log_XIMU.gyro_y = buf.xsens_sensor.gyro_rad_s[1];
+					log_msg.body.log_XIMU.gyro_z = buf.xsens_sensor.gyro_rad_s[2];
+					log_msg.body.log_XIMU.acc_x =
+							buf.xsens_sensor.accelerometer_m_s2[0];
+					log_msg.body.log_XIMU.acc_y =
+							buf.xsens_sensor.accelerometer_m_s2[1];
+					log_msg.body.log_XIMU.acc_z =
+							buf.xsens_sensor.accelerometer_m_s2[2];
+					log_msg.body.log_XIMU.mag_x = buf.xsens_sensor.magnetometer_ga[0];
+					log_msg.body.log_XIMU.mag_y = buf.xsens_sensor.magnetometer_ga[1];
+					log_msg.body.log_XIMU.mag_z = buf.xsens_sensor.magnetometer_ga[2];
+					LOGBUFFER_WRITE_AND_COUNT(XIMU);
+				}
+
+				if (write_XSEN) {
+					log_msg.msg_type = LOG_XSEN_MSG;
+					log_msg.body.log_XSEN.baro_pres = buf.xsens_sensor.baro_pres_mbar;
+					log_msg.body.log_XSEN.baro_alt = buf.xsens_sensor.baro_alt_meter;
+					log_msg.body.log_XSEN.baro_temp =
+							buf.xsens_sensor.baro_temp_celcius;
+					log_msg.body.log_XSEN.diff_pres =
+							buf.xsens_sensor.differential_pressure_pa;
+					LOGBUFFER_WRITE_AND_COUNT(XSEN);
+				}
+			}
+
+			/* --- XSENS GPS POSITION --- */
+			if (fds[ifds++].revents & POLLIN) {
+				orb_copy(ORB_ID(xsens_vehicle_gps_position), subs.xsens_gps_pos_sub,
+						&buf.xsens_gps_pos);
+				log_msg.msg_type = LOG_XGPS_MSG;
+				log_msg.body.log_XGPS.gps_time = buf.xsens_gps_pos.time_gps_usec;
+				log_msg.body.log_XGPS.fix_type = buf.xsens_gps_pos.fix_type;
+				log_msg.body.log_XGPS.eph = buf.xsens_gps_pos.eph_m;
+				log_msg.body.log_XGPS.epv = buf.xsens_gps_pos.epv_m;
+				log_msg.body.log_XGPS.lat = buf.xsens_gps_pos.lat;
+				log_msg.body.log_XGPS.lon = buf.xsens_gps_pos.lon;
+				log_msg.body.log_XGPS.alt = buf.xsens_gps_pos.alt * 0.001f;
+				log_msg.body.log_XGPS.vel_n = buf.xsens_gps_pos.vel_n_m_s;
+				log_msg.body.log_XGPS.vel_e = buf.xsens_gps_pos.vel_e_m_s;
+				log_msg.body.log_XGPS.vel_d = buf.xsens_gps_pos.vel_d_m_s;
+				log_msg.body.log_XGPS.cog = buf.xsens_gps_pos.cog_rad;
+				LOGBUFFER_WRITE_AND_COUNT(XGPS);
+			}
+
+			/* --- XSENS ATTITUDE --- */
+			if (fds[ifds++].revents & POLLIN) {
+				orb_copy(ORB_ID(xsens_vehicle_attitude), subs.xsens_attitude_sub, &buf.xsens_attitude);
+				log_msg.msg_type = LOG_XATT_MSG;
+				log_msg.body.log_XATT.roll = buf.xsens_attitude.roll;
+				log_msg.body.log_XATT.pitch = buf.xsens_attitude.pitch;
+				log_msg.body.log_XATT.yaw = buf.xsens_attitude.yaw;
+				LOGBUFFER_WRITE_AND_COUNT(XATT);
+			}
+
+			/* --- XSENS GLOBAL POSITION --- */ // XXX NEU
+			if (fds[ifds++].revents & POLLIN) {
+				orb_copy(ORB_ID(xsens_vehicle_global_position), subs.xsens_global_pos_sub,
+						&buf.xsens_global_pos);
+				log_msg.msg_type = LOG_XGPO_MSG;
+				log_msg.body.log_XGPO.lat = buf.xsens_global_pos.lat;
+				log_msg.body.log_XGPO.lon = buf.xsens_global_pos.lon;
+				log_msg.body.log_XGPO.alt = buf.xsens_global_pos.alt * 0.001f;
+				log_msg.body.log_XGPO.vel_n = buf.xsens_global_pos.vel_n_m_s;
+				log_msg.body.log_XGPO.vel_e = buf.xsens_global_pos.vel_e_m_s;
+				log_msg.body.log_XGPO.vel_d = buf.xsens_global_pos.vel_d_m_s;
+				LOGBUFFER_WRITE_AND_COUNT(XGPO);
 			}
 
 			/* signal the other thread new data, but not yet unlock */

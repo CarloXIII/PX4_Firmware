@@ -1,8 +1,9 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
- *   Author: Thomas Gubler <thomasgubler@student.ethz.ch>
- *           Julian Oes <joes@student.ethz.ch>
+ *   Copyright (C) 2008-2012 PX4 Development Team. All rights reserved.
+ *   Author: @author Thomas Gubler <thomasgubler@student.ethz.ch>
+ *           @author Julian Oes <joes@student.ethz.ch>
+ *           @author Lorenz Meier <lm@inf.ethz.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,38 +34,41 @@
  *
  ****************************************************************************/
 
-/** 
- * @file xsens_helper.h
+/**
+ * @file xsens_vehicle_attitude.h
+ * Definition of the XSENS attitude uORB topic.
  */
 
-#ifndef XSENS_HELPER_H
-#define XSENS_HELPER_H
+#ifndef XSENS_VEHICLE_ATTITUDE_H_
+#define XSENS_VEHICLE_ATTITUDE_H_
 
-#include <uORB/uORB.h>
-#include <uORB/topics/xsens_vehicle_gps_position.h>
-#include <uORB/topics/xsens_sensor_combined.h>
-#include <uORB/topics/xsens_vehicle_attitude.h>
-#include <uORB/topics/xsens_vehicle_global_position.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "../uORB.h"
 
-class XSENS_Helper
-{
-public:
-	virtual int			configure(unsigned &baud) = 0;
-	virtual int 			receive(unsigned timeout) = 0;
-	int 				set_baudrate(const int &fd, unsigned baud);
-	float				get_position_update_rate();
-	float				get_velocity_update_rate();
-	float				reset_update_rates();
-	float				store_update_rates();
-	bool				xsens_new_gps_data;
-protected:
-	uint8_t _rate_count_lat_lon;
-	uint8_t _rate_count_vel;
+/**
+ * @addtogroup topics
+ * @{
+ */
 
-	float _rate_lat_lon;
-	float _rate_vel;
+/**
+ * Attitude in NED body frame in SI units.
+ *
+ * @see http://en.wikipedia.org/wiki/International_System_of_Units
+ */
+struct xsens_vehicle_attitude_s {
 
-	uint64_t _interval_rate_start;
+	uint64_t timestamp;	/**< in microseconds since system start          */
+	float roll;		/**< Roll angle (rad, Tait-Bryan, NED)				*/
+	float pitch;		/**< Pitch angle (rad, Tait-Bryan, NED)				*/
+	float yaw;		/**< Yaw angle (rad, Tait-Bryan, NED)				*/
 };
 
-#endif /* XSENS_HELPER_H */
+/**
+ * @}
+ */
+
+/* register this as object request broker structure */
+ORB_DECLARE(xsens_vehicle_attitude);
+
+#endif

@@ -163,7 +163,8 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 class XSENS_PARSER : public XSENS_Helper
 {
 public:
-	XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s  *xsens_sensor_combined);
+	XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s  *xsens_sensor_combined,
+			struct xsens_vehicle_attitude_s * _xsens_vehicle_attitude, struct xsens_vehicle_global_position_s * _global_position);
 	~XSENS_PARSER();
 	int				receive(unsigned timeout);
 	int				configure(unsigned &baudrate);
@@ -193,6 +194,8 @@ private:
 	int					_fd;
 	struct xsens_vehicle_gps_position_s *_gps_position;
 	struct xsens_sensor_combined_s *_xsens_sensor_combined;
+	struct xsens_vehicle_attitude_s * _xsens_vehicle_attitude;
+	struct xsens_vehicle_global_position_s * _global_position;
 	xsens_decode_state_t	_decode_state;
 	uint8_t				_xsens_revision;
 	uint8_t				_rx_header_lgth;
