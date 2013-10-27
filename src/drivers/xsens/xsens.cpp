@@ -422,6 +422,11 @@ XSENS::print_status()
 	printf("\nmag x [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[0]);
 	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
 	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
+
+	printf("\nroll : %.3f", _report_vehicle_attitude.roll); // XXX EINHEIT EINFÜGEN
+	printf("\npitch : %.3f", _report_vehicle_attitude.pitch);
+	printf("\nyaw : %.3f", _report_vehicle_attitude.yaw);
+
 	printf("\n*****************************************************");
 
 	// XXX Die weiteren Daten noch printen

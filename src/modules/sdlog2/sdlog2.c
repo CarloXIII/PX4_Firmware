@@ -1223,7 +1223,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 				LOGBUFFER_WRITE_AND_COUNT(GVSP);
 			}
 
-			/* --- XSENS SENSOR COMBINED --- */ // XXX NEU
+			/* --- XSENS SENSOR COMBINED --- */
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(xsens_sensor_combined), subs.xsens_sensor_sub, &buf.xsens_sensor);
 				bool write_XIMU = false;
@@ -1314,7 +1314,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 				LOGBUFFER_WRITE_AND_COUNT(XATT);
 			}
 
-			/* --- XSENS GLOBAL POSITION --- */ // XXX NEU
+			/* --- XSENS GLOBAL POSITION --- */
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(xsens_vehicle_global_position), subs.xsens_global_pos_sub,
 						&buf.xsens_global_pos);
