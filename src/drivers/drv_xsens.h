@@ -44,7 +44,10 @@
 #include "drv_sensor.h"
 #include "drv_orb_dev.h"
 
-#define XSENS_DEFAULT_UART_PORT "/dev/ttyS2"
+#define XSENS_DEFAULT_UART_PORT "/dev/ttyS3" // UART 6
+/*XXX ATTENTION it's the same UART like the GPS.
+ * If you useing GPS, you have to change this UART
+ */
 
 #define XSENS_DEVICE_PATH	"/dev/xsens"
 

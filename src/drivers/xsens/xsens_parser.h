@@ -44,7 +44,7 @@
 #define XSENS_BID 0xFF
 #define XSENS_MID 0x32
 
-#define XSENS_BAUDRATE 38400
+#define XSENS_BAUDRATE 115200
 
 #define HORIZONTAL_ACCURACY_FOR_FIX 8.0f	// This are the sigma values. Use it to define the fix_type
 #define VERTICAL_ACCURACY_FOR_FIX 12.0f	// of the xsens_vehicle_gps_position message [m]

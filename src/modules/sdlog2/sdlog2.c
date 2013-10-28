@@ -1177,7 +1177,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(rc_channels), subs.rc_sub, &buf.rc);
 				log_msg.msg_type = LOG_RC_MSG;
-				/* Copy all of the 14 rc channels*/
+				/*Copy only the first 8 channels of 14 */
 				memcpy(log_msg.body.log_RC.channel, buf.rc.chan, sizeof(log_msg.body.log_RC.channel));
 				LOGBUFFER_WRITE_AND_COUNT(RC);
 			}
