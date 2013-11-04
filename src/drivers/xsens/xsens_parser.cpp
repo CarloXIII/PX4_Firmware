@@ -298,6 +298,10 @@ XSENS_PARSER::handle_message()
 	float p = (xsens_gps_pvt->press * 2) / 1000.0f;	// Factor 2 is the scale factor of the XSens
 	_xsens_sensor_combined->baro_alt_meter = (float) (((powf((p / p1), (-(a * R) / g))) * T1) - T1) / a;
 	_xsens_sensor_combined->baro_pres_mbar = (xsens_gps_pvt->press * 2) / 1000.0f;
+	_xsens_sensor_combined->baro_counter += 1;
+
+	_xsens_sensor_combined->differential_pressure_pa = 0;
+
 	_rx_header_lgth += xsens_gps_lgth;
 #endif
 
@@ -312,6 +316,8 @@ XSENS_PARSER::handle_message()
 	xsens_temp = (xsens_temp_t *) _xsens_temp_message;
 
 	//warnx("xsens_temp: %f", xsens_temp->temp);
+
+	_xsens_sensor_combined->baro_temp_celcius = xsens_temp->temp;
 
 	_rx_header_lgth += xsens_temp_lgth;
 #endif
