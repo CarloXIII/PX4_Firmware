@@ -53,8 +53,15 @@
 struct range_finder_report {
 	uint64_t timestamp;
 	uint64_t error_count;
-	float distance; 			/** in meters */
-	uint8_t valid;				/** 1 == within sensor range, 0 = outside sensor range */
+	uint16_t vin1; 			/** volts */
+	uint16_t vin2; 			/** volts */
+	uint16_t vin3; 			/** volts */
+	uint16_t vin4; 			/** volts */
+	uint16_t vin5; 			/** volts */
+	uint16_t vin6; 			/** volts */
+	uint16_t vin7; 			/** volts */
+	uint16_t vin8; 			/** volts */
+	uint16_t valid;				/** 1 == within sensor range, 0 = outside sensor range */
 };
 
 /*

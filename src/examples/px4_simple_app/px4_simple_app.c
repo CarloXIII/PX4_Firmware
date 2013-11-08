@@ -95,8 +95,17 @@ int px4_simple_app_main(int argc, char *argv[])
 				struct range_finder_report raw;
 				/* copy sensors raw data into local buffer */
 				orb_copy(ORB_ID(sensor_range_finder), sensor_sub_fd, &raw);
-				printf("[px4_simple_app] Current:\t%8.4f\n", (double)raw.distance);
-				printf("[px4_simple_app] Timestamp:\t%8.4f\n", (double)raw.timestamp);
+				printf("[px4_simple_app] Timestamp:\t%d\n", (double)raw.timestamp);
+				printf("[px4_simple_app] Current 1:\t%d\n", raw.vin1);
+				printf("[px4_simple_app] Current 2:\t%d\n", raw.vin2);
+				printf("[px4_simple_app] Current 3:\t%d\n", raw.vin3);
+				printf("[px4_simple_app] Current 4:\t%d\n", raw.vin4);
+				printf("[px4_simple_app] Current 5:\t%d\n", raw.vin5);
+				printf("[px4_simple_app] Current 6:\t%d\n", raw.vin6);
+				printf("[px4_simple_app] Current 7:\t%d\n", raw.vin7);
+				printf("[px4_simple_app] Current 8:\t%d\n", raw.vin8);
+
+				printf("[px4_simple_app] CONFIGURATION REGISTER :\t%d\n", raw.valid);
 
 				/* set att and publish this information for other apps
 				att.roll = raw.accelerometer_m_s2[0];

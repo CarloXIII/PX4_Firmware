@@ -24,16 +24,25 @@
  * current sensor report structure.  Reads from the device must be in multiples of this
  * structure.
  */
+
 struct current_sensor_report {
 	uint64_t timestamp;
 	uint64_t error_count;
-	float value; 			/** in meters */
+	uint16_t vin1; 			/** volts */
+	uint16_t vin2; 			/** volts */
+	uint16_t vin3; 			/** volts */
+	uint16_t vin4; 			/** volts */
+	uint16_t vin5; 			/** volts */
+	uint16_t vin6; 			/** volts */
+	uint16_t vin7; 			/** volts */
+	uint16_t vin8; 			/** volts */
+	uint16_t valid;				/** 1 == within sensor range, 0 = outside sensor range */
 };
 
 /*
  * ObjDev tag for raw range finder data.
  */
-//ORB_DECLARE(sensor_range_finder);
+ORB_DECLARE(sensor_current_sensor);
 
 /*
  * ioctl() definitions
@@ -42,11 +51,16 @@ struct current_sensor_report {
  * interfaces from drv_sensor.h
  */
 
-#define _CURRENTSENSORIOCBASE		(0x7900)	//random choice
-#define __CURRENTSENSORIOC(_n)		(_IOC(_CURRENTSENSORIOCBASE, _n))
 
-#define CURRENTSENSORIOCSSCALE		_CURRENTSENSORIOC(0)
-#define CURRENTSENSORIOCGSCALE		_CURRENTSENSORIOC(1)
+#define _RANGEFINDERIOCBASE			(0x7900)
+#define __RANGEFINDERIOC(_n)		(_IOC(_RANGEFINDERIOCBASE, _n))
+
+/** set the minimum effective distance of the device */
+#define RANGEFINDERIOCSETMINIUMDISTANCE	__RANGEFINDERIOC(1)
+
+/** set the maximum effective distance of the device */
+#define RANGEFINDERIOCSETMAXIUMDISTANCE	__RANGEFINDERIOC(2)
 
 
-#endif /* _DRV_AIRSPEED_H */
+
+#endif
