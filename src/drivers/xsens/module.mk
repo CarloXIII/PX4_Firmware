@@ -32,13 +32,11 @@
 ############################################################################
 
 #
-# GPS driver
+# XSENS driver
 #
 
-MODULE_COMMAND	= gps
+MODULE_COMMAND	= xsens
 
-SRCS		= gps.cpp \
-		  gps_helper.cpp \
-		  mtk.cpp \
-		  ubx.cpp \
-		  novatel.cpp
+SRCS		= xsens.cpp \
+			xsens_helper.cpp \
+			xsens_parser.cpp

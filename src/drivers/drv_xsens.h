@@ -32,13 +32,11 @@
  ****************************************************************************/
 
 /**
- * @file drv_gps.h
- *
- * GPS driver interface.
+ * @file XSENS driver interface.
  */
 
-#ifndef _DRV_GPS_H
-#define _DRV_GPS_H
+#ifndef _DRV_XSENS_H
+#define _DRV_XSENS_H
 
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -46,28 +44,19 @@
 #include "drv_sensor.h"
 #include "drv_orb_dev.h"
 
-#define GPS_DEFAULT_UART_PORT "/dev/ttyS3"
+#define XSENS_DEFAULT_UART_PORT "/dev/ttyS2"
 
-#define GPS_DEVICE_PATH	"/dev/gps"
-
-typedef enum {
-	GPS_DRIVER_MODE_NONE = 0,
-	GPS_DRIVER_MODE_UBX,
-	GPS_DRIVER_MODE_MTK,
-	GPS_DRIVER_MODE_NMEA,
-	GPS_DRIVER_MODE_NOVATEL,
-} gps_driver_mode_t;
-
+#define XSENS_DEVICE_PATH	"/dev/xsens"
 
 /*
- * ObjDev tag for GPS data.
+ * ObjDev tag for xsens data.
  */
-ORB_DECLARE(gps);
+ORB_DECLARE(xsens);
 
 /*
  * ioctl() definitions
  */
-#define _GPSIOCBASE			(0x2800)            //TODO: arbitrary choice...
-#define _GPSIOC(_n)		(_IOC(_GPSIOCBASE, _n))
+#define _XSENSIOCBASE			(0x2800)            //TODO: arbitrary choice...
+#define _XSENSIOC(_n)		(_IOC(_XSENSIOCBASE, _n))
 
-#endif /* _DRV_GPS_H */
+#endif /* _DRV_XSENS_H */

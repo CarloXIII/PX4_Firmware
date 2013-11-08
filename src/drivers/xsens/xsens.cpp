@@ -32,8 +32,8 @@
  ****************************************************************************/
 
 /**
- * @file gps.cpp
- * Driver for the GPS on a serial port
+ * @file xsens.cpp
+ * Driver for the xsens on a serial port
  */
 
 #include <nuttx/clock.h>
@@ -59,13 +59,11 @@
 #include <systemlib/perf_counter.h>
 #include <systemlib/scheduling_priorities.h>
 #include <systemlib/err.h>
-#include <drivers/drv_gps.h>
+#include <drivers/drv_xsens.h>
 #include <uORB/uORB.h>
-#include <uORB/topics/vehicle_gps_position.h>
+#include <uORB/topics/xsens_vehicle_gps_position.h>
 
-#include "ubx.h"
-#include "mtk.h"
-#include "novatel.h"
+#include "xsens_parser.h"
 
 
 #define TIMEOUT_5HZ 500
@@ -83,11 +81,11 @@ static const int ERROR = -1;
 
 
 
-class GPS : public device::CDev
+class XSENS : public device::CDev
 {
 public:
-	GPS(const char *uart_path);
-	virtual ~GPS();
+	XSENS(const char* uart_path);
+	virtual ~XSENS();
 
 	virtual int			init();
 
@@ -97,26 +95,28 @@ public:
 	 * Diagnostics - print some basic information about the driver.
 	 */
 	void				print_info();
+	void				print_status();
 
 private:
 
 	bool				_task_should_exit;				///< flag to make the main worker task exit
-	int				_serial_fd;					///< serial interface to GPS
-	unsigned			_baudrate;					///< current baudrate
-	char				_port[20];					///< device / serial port path
-	volatile int			_task;						//< worker task
-	bool				_healthy;					///< flag to signal if the GPS is ok
-	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the GPS has changed
-	bool				_mode_changed;					///< flag that the GPS mode has changed
-	gps_driver_mode_t		_mode;						///< current mode
-	GPS_Helper			*_Helper;					///< instance of GPS parser
-	struct vehicle_gps_position_s 	_report;					///< uORB topic for gps position
-	orb_advert_t			_report_pub;					///< uORB pub for gps position
-	float				_rate;						///< position update rate
+	int					_serial_fd;						///< serial interface to XSENS
+	unsigned			_baudrate;						///< current baudrate
+	char				_port[20];						///< device / serial port path
+	volatile int		_task;							///< worker task
+	bool				_healthy;						///< flag to signal if the XSENS is ok
+	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the XSENS has changed
+	bool				_mode_changed;					///< flag that the XSENS mode has changed
+	XSENS_Helper		*_Helper;						///< instance of XSENS parser
+	struct xsens_vehicle_gps_position_s 	_report;	///< uORB topic for xsens gps position
+	struct xsens_sensor_combined_s			_report_sensor_combined;	///< uORB topic for xsens sensor combined
+	orb_advert_t		_report_pub;					///< uORB pub for gps position
+	orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
+	float				_rate;							///< position update rate
 
 
 	/**
-	 * Try to configure the GPS, handle outgoing communication to the GPS
+	 * Try to configure the XSENS, handle outgoing communication to the XSENS
 	 */
 	void				config();
 
@@ -127,17 +127,17 @@ private:
 
 
 	/**
-	 * Worker task: main GPS thread that configures the GPS and parses incoming data, always running
+	 * Worker task: main XSENS thread that configures the XSENS and parses incoming data, always running
 	 */
 	void				task_main(void);
 
 	/**
-	 * Set the baudrate of the UART to the GPS
+	 * Set the baudrate of the UART to the XSENS
 	 */
 	int				set_baudrate(unsigned baud);
 
 	/**
-	 * Send a reset command to the GPS
+	 * Send a reset command to the XSENS
 	 */
 	void				cmd_reset();
 
@@ -147,24 +147,24 @@ private:
 /*
  * Driver 'main' command.
  */
-extern "C" __EXPORT int gps_main(int argc, char *argv[]);
+extern "C" __EXPORT int xsens_main(int argc, char *argv[]);
 
 namespace
 {
 
-GPS	*g_dev;
+XSENS	*g_dev;
 
 }
 
 
-GPS::GPS(const char *uart_path) :
-	CDev("gps", GPS_DEVICE_PATH),
+XSENS::XSENS(const char* uart_path) :
+	CDev("xsens", XSENS_DEVICE_PATH),
 	_task_should_exit(false),
 	_healthy(false),
 	_mode_changed(false),
-	_mode(GPS_DRIVER_MODE_NOVATEL),
 	_Helper(nullptr),
 	_report_pub(-1),
+	_report_pub_sensor_combined(-1),
 	_rate(0.0f)
 {
 	/* store port name */
@@ -175,11 +175,12 @@ GPS::GPS(const char *uart_path) :
 	/* we need this potentially before it could be set in task_main */
 	g_dev = this;
 	memset(&_report, 0, sizeof(_report));
+	memset(&_report_sensor_combined, 0, sizeof(_report_sensor_combined));
 
 	_debug_enabled = true;
 }
 
-GPS::~GPS()
+XSENS::~XSENS()
 {
 	/* tell the task we want it to go away */
 	_task_should_exit = true;
@@ -193,13 +194,12 @@ GPS::~GPS()
 	/* well, kill it anyway, though this will probably crash */
 	if (_task != -1)
 		task_delete(_task);
-
 	g_dev = nullptr;
 
 }
 
 int
-GPS::init()
+XSENS::init()
 {
 	int ret = ERROR;
 
@@ -207,8 +207,8 @@ GPS::init()
 	if (CDev::init() != OK)
 		goto out;
 
-	/* start the GPS driver worker task */
-	_task = task_create("gps", SCHED_PRIORITY_SLOW_DRIVER, 2048, (main_t)&GPS::task_main_trampoline, nullptr);
+	/* start the XSENS driver worker task */
+	_task = task_create("xsens", SCHED_PRIORITY_SLOW_DRIVER, 2048, (main_t)&XSENS::task_main_trampoline, nullptr);
 
 	if (_task < 0) {
 		warnx("task start failed: %d", errno);
@@ -221,7 +221,7 @@ out:
 }
 
 int
-GPS::ioctl(struct file *filp, int cmd, unsigned long arg)
+XSENS::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 	lock();
 
@@ -239,13 +239,13 @@ GPS::ioctl(struct file *filp, int cmd, unsigned long arg)
 }
 
 void
-GPS::task_main_trampoline(void *arg)
+XSENS::task_main_trampoline(void *arg)
 {
 	g_dev->task_main();
 }
 
 void
-GPS::task_main()
+XSENS::task_main()
 {
 	log("starting");
 
@@ -271,43 +271,36 @@ GPS::task_main()
 			_Helper = nullptr;
 		}
 
-		switch (_mode) {
-		case GPS_DRIVER_MODE_UBX:
-			_Helper = new UBX(_serial_fd, &_report);
-			break;
 
-		case GPS_DRIVER_MODE_MTK:
-			_Helper = new MTK(_serial_fd, &_report);
-			break;
+		_Helper = new XSENS_PARSER(_serial_fd, &_report, &_report_sensor_combined);
 
-		case GPS_DRIVER_MODE_NOVATEL:
-			_Helper = new NOVATEL(_serial_fd, &_report);
-			break;
-
-		default:
-			break;
-
-		case GPS_DRIVER_MODE_NMEA:
-			//_Helper = new NMEA(); //TODO: add NMEA
-			break;
-		}
+		//warnx("xsens: task main started");
 
 		unlock();
-
 		if (_Helper->configure(_baudrate) == 0) {
 			unlock();
 
-			// GPS is obviously detected successfully, reset statistics
+			// XSENS is obviously detected successfully, reset statistics
 			_Helper->reset_update_rates();
+			//warnx("xsens detected");
 
 			while (_Helper->receive(TIMEOUT_5HZ) > 0 && !_task_should_exit) {
 //				lock();
+				//warnx("xsens: receive");
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
-					orb_publish(ORB_ID(vehicle_gps_position), _report_pub, &_report);
-
+					if(_Helper->xsens_new_gps_data == true){
+						orb_publish(ORB_ID(xsens_vehicle_gps_position), _report_pub, &_report);
+						_Helper->xsens_new_gps_data = false;
+					}
 				} else {
-					_report_pub = orb_advertise(ORB_ID(vehicle_gps_position), &_report);
+					_report_pub = orb_advertise(ORB_ID(xsens_vehicle_gps_position), &_report);
+				}
+
+				if (_report_pub_sensor_combined > 0) {
+					orb_publish(ORB_ID(xsens_sensor_combined), _report_pub_sensor_combined, &_report_sensor_combined);
+				} else {
+					_report_pub_sensor_combined = orb_advertise(ORB_ID(xsens_sensor_combined), &_report_sensor_combined);
 				}
 
 				last_rate_count++;
@@ -322,35 +315,10 @@ GPS::task_main()
 				}
 
 				if (!_healthy) {
-					char *mode_str = "unknown";
-
-					switch (_mode) {
-					case GPS_DRIVER_MODE_UBX:
-						mode_str = "UBX";
-						break;
-
-					case GPS_DRIVER_MODE_MTK:
-						mode_str = "MTK";
-						break;
-						
-					case GPS_DRIVER_MODE_NOVATEL:
-						mode_str = "NOVATEL";
-						break;
-
-					case GPS_DRIVER_MODE_NMEA:
-						mode_str = "NMEA";
-						break;
-
-
-					default:
-						break;
-					}
-
-					warnx("module found: %s", mode_str);
+					warnx("module found");
 					_healthy = true;
 				}
 			}
-
 			if (_healthy) {
 				warnx("module lost");
 				_healthy = false;
@@ -359,35 +327,10 @@ GPS::task_main()
 
 			lock();
 		}
-
 		lock();
 
-		/* select next mode */
-		switch (_mode) {
-		case GPS_DRIVER_MODE_UBX:
-			_mode = GPS_DRIVER_MODE_MTK;
-			break;
-
-		case GPS_DRIVER_MODE_MTK:
-			_mode = GPS_DRIVER_MODE_UBX;
-			break;
-
-		case GPS_DRIVER_MODE_NOVATEL:
-			_mode = GPS_DRIVER_MODE_NOVATEL;
-			break;
-			
-		case GPS_DRIVER_MODE_NMEA:
-			_mode = GPS_DRIVER_MODE_NMEA;
-			break;
-			
-		default:
-			break;
-
-		}
-
 	}
-
-	warnx("exiting");
+	debug("exiting");
 
 	::close(_serial_fd);
 
@@ -399,48 +342,60 @@ GPS::task_main()
 
 
 void
-GPS::cmd_reset()
+XSENS::cmd_reset()
 {
 	//XXX add reset?
 }
 
 void
-GPS::print_info()
+XSENS::print_info()
 {
-	switch (_mode) {
-	case GPS_DRIVER_MODE_UBX:
-		warnx("protocol: UBX");
-		break;
-
-	case GPS_DRIVER_MODE_MTK:
-		warnx("protocol: MTK");
-		break;
-
-
-	case GPS_DRIVER_MODE_NMEA:
-		warnx("protocol: NMEA");
-		break;
-		
-	case GPS_DRIVER_MODE_NOVATEL:
-		warnx("protocol: NOVATEL");
-		break;
-		
-	default:
-		break;
-	}
-
 	warnx("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
+	usleep(100000);
+}
 
-	if (_report.timestamp_position != 0) {
-		warnx("position lock: %dD, satellites: %d, last update: %fms ago", (int)_report.fix_type,
-				_report.satellites_visible, (hrt_absolute_time() - _report.timestamp_position) / 1000.0f);
-		warnx("lat: %d, lon: %d, alt: %d", _report.lat, _report.lon, _report.alt);
-		warnx("eph: %.2fm, epv: %.2fm", _report.eph_m, _report.epv_m);
-		warnx("rate position: \t%6.2f Hz", (double)_Helper->get_position_update_rate());
-		warnx("rate velocity: \t%6.2f Hz", (double)_Helper->get_velocity_update_rate());
-		warnx("rate publication:\t%6.2f Hz", (double)_rate);
+void
+XSENS::print_status()
+{
+	printf("\n******\nXSENS data sent to kalman filter (xsens_vehicle_gps_position_s, xsens_sensor_combined_s)");
+	printf("GPS packet:");
+	//printf("\nformat test: %.3f", 334.98376f);
+	printf("\nhorizontal accuracy: %.3f", _report.p_variance_m);
+	printf("\nspeed accuracy: %.3f", _report.s_variance_m_s);
+	printf("\ncourse accuracy: %f", _report.c_variance_rad);
+	printf("\nfix type(3Dfix = 3): %d", _report.fix_type);
+	printf("\nlatitude: %d", _report.lat);
+	printf("\nlongitude: %d", _report.lon);
+	printf("\naltitude gps: %d", _report.alt);
+	printf("\nHDOP: %.3f", _report.eph_m);
+	printf("\nvelocity: %.3f", _report.vel_m_s);
+	printf("\nvelocity N: %.3f", _report.vel_n_m_s);
+	printf("\nvelocity E: %.3f", _report.vel_e_m_s);
+	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp_time)) / 1000000.0f) );
+	printf("\nxsens package rate (not gps): %.3f", _rate );
+	//printf("\ngps data age (bGPS): %.3f", xsens_gps_pvt->bgps );
+	printf("\n******");
+	printf("\nSensor packet:");
+	printf("\naltitude barometer: %.3f", _report_sensor_combined.baro_alt_meter);
+	printf("\npressure barometer: %.3f", _report_sensor_combined.baro_pres_mbar);
 
-	}
+	printf("\ngyro x [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[0]);
+	printf("\ngyro y [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[1]);
+	printf("\ngyro z [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[2]);
+
+	printf("\naccel x [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[0]);
+	printf("\naccel y [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[1]);
+	printf("\naccel z [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[2]);
+
+	printf("\nmag x [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[0]);
+	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
+	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
+	printf("\n*****************************************************");
+
+	//xsens::_
+	//errx(0, "PASS");
+	//errx(0, "PASS");
+	//("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
 
 	usleep(100000);
 }
@@ -448,10 +403,10 @@ GPS::print_info()
 /**
  * Local functions in support of the shell command.
  */
-namespace gps
+namespace xsens
 {
 
-GPS	*g_dev;
+XSENS	*g_dev;
 
 void	start(const char *uart_path);
 void	stop();
@@ -471,7 +426,7 @@ start(const char *uart_path)
 		errx(1, "already started");
 
 	/* create the driver */
-	g_dev = new GPS(uart_path);
+	g_dev = new XSENS(uart_path);
 
 	if (g_dev == nullptr)
 		goto fail;
@@ -480,13 +435,12 @@ start(const char *uart_path)
 		goto fail;
 
 	/* set the poll rate to default, starts automatic data collection */
-	fd = open(GPS_DEVICE_PATH, O_RDONLY);
+	fd = open(XSENS_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0) {
-		errx(1, "Could not open device path: %s\n", GPS_DEVICE_PATH);
+		errx(1, "Could not open device path: %s\n", XSENS_DEVICE_PATH);
 		goto fail;
 	}
-
 	exit(0);
 
 fail:
@@ -519,8 +473,11 @@ stop()
 void
 test()
 {
+	if (g_dev == nullptr)
+		errx(1, "driver not running");
 
-	errx(0, "PASS");
+	g_dev->print_status();
+	exit(0);
 }
 
 /**
@@ -529,7 +486,7 @@ test()
 void
 reset()
 {
-	int fd = open(GPS_DEVICE_PATH, O_RDONLY);
+	int fd = open(XSENS_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0)
 		err(1, "failed ");
@@ -558,11 +515,11 @@ info()
 
 
 int
-gps_main(int argc, char *argv[])
+xsens_main(int argc, char *argv[])
 {
 
 	/* set to default */
-	char *device_name = GPS_DEFAULT_UART_PORT;
+	char* device_name = XSENS_DEFAULT_UART_PORT;
 
 	/*
 	 * Start/load the driver.
@@ -572,35 +529,32 @@ gps_main(int argc, char *argv[])
 		if (argc > 3) {
 			if (!strcmp(argv[2], "-d")) {
 				device_name = argv[3];
-
 			} else {
 				goto out;
 			}
 		}
-
-		gps::start(device_name);
+		xsens::start(device_name);
 	}
 
 	if (!strcmp(argv[1], "stop"))
-		gps::stop();
-
+		xsens::stop();
 	/*
 	 * Test the driver/device.
 	 */
 	if (!strcmp(argv[1], "test"))
-		gps::test();
+		xsens::test();
 
 	/*
 	 * Reset the driver.
 	 */
 	if (!strcmp(argv[1], "reset"))
-		gps::reset();
+		xsens::reset();
 
 	/*
 	 * Print driver status.
 	 */
 	if (!strcmp(argv[1], "status"))
-		gps::info();
+		xsens::info();
 
 out:
 	errx(1, "unrecognized command, try 'start', 'stop', 'test', 'reset' or 'status' [-d /dev/ttyS0-n]");

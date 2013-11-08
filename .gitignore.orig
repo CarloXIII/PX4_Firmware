@@ -24,7 +24,10 @@ Firmware.sublime-workspace
 Images/*.bin
 Images/*.px4
 mavlink/include/mavlink/v0.9/
+<<<<<<< HEAD
 html/
-Nuttx
 doxy.log
 Doxyfile
+=======
+NuttX
+>>>>>>> github/master

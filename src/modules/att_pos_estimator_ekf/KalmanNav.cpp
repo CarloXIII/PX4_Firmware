@@ -71,8 +71,10 @@ KalmanNav::KalmanNav(SuperBlock *parent, const char *name) :
 	_gyro_sub(-1),
 	_mag_sub(-1),
 	// subscriptions
-	_sensors(&getSubscriptions(), ORB_ID(sensor_combined), 5), // limit to 200 Hz
-	_gps(&getSubscriptions(), ORB_ID(vehicle_gps_position), 100), // limit to 10 Hz
+	//_sensors(&getSubscriptions(), ORB_ID(sensor_combined), 5), // limit to 200 Hz
+	_sensors(&getSubscriptions(), ORB_ID(xsens_sensor_combined), 5), // limit to 200 Hz
+	//_gps(&getSubscriptions(), ORB_ID(vehicle_gps_position), 100), // limit to 10 Hz
+	_gps(&getSubscriptions(), ORB_ID(xsens_vehicle_gps_position), 100), // take the gps info from the xsens, limit to 10 Hz
 	_param_update(&getSubscriptions(), ORB_ID(parameter_update), 1000), // limit to 1 Hz
 	// publications
 	_pos(&getPublications(), ORB_ID(vehicle_global_position)),
@@ -127,7 +129,9 @@ KalmanNav::KalmanNav(SuperBlock *parent, const char *name) :
 	lon = 0.0f;
 	alt = 0.0f;
 
-	// gyro, accel and mag subscriptions
+
+	// XXX This should be replaced with the xsens subscription. Otherwise the onboard PX4-sensors are used for init.
+	// gyro, accel and mag subscriptions (B.Imbach)
 	_gyro_sub = orb_subscribe(ORB_ID(sensor_gyro));
 	_accel_sub = orb_subscribe(ORB_ID(sensor_accel));
 	_mag_sub = orb_subscribe(ORB_ID(sensor_mag));
