@@ -73,11 +73,11 @@
 
 /* Configuration Constants */
 #define MB12XX_BUS 			PX4_I2C_BUS_EXPANSION
-#define MB12XX_BASEADDR 	0x70 /* 7-bit address. 8-bit address is 0xE0 */
+#define MB12XX_BASEADDR 	0x20 /* 7-bit address. 8-bit address is 0xE0 	-> 0x20 = 0b010 0000
 
 /* MB12xx Registers addresses */
 
-#define MB12XX_TAKE_RANGE_REG	0x51		/* Measure range Register */
+#define MB12XX_TAKE_RANGE_REG	0xC0		/* Measure range Register */
 #define MB12XX_SET_ADDRESS_1	0xAA		/* Change address 1 Register */
 #define MB12XX_SET_ADDRESS_2	0xA5		/* Change address 2 Register */
 
@@ -484,8 +484,8 @@ MB12XX::collect()
 		return ret;
 	}
 	
-	uint16_t distance = val[0] << 8 | val[1];
-	float si_units = (distance * 1.0f)/ 100.0f; /* cm to m */
+	uint16_t distance = (val[0] << 8 | val[1]) << 4;
+	float si_units = (distance * 1.0f); /* cm to m */
 	struct range_finder_report report;
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
@@ -516,6 +516,22 @@ MB12XX::start()
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_reports->flush();
+
+
+	// Set the Configuration Register and activate the channels to be converted
+	int ret;
+
+	uint8_t cmd [3] = {0xC2, 0x0F, 0xF8};		//Configreg: 0b0010 -> 0h2, vin5 -> 0hC   ergibt 0hC2
+												//Configreg: 0bxxxx111111111000
+	ret = transfer(&cmd[0], 3, nullptr, 0);
+
+	if (OK != ret)
+	{
+		perf_count(_comms_errors);
+		log("i2c::transfer returned %d", ret);
+	}
+
+
 
 	/* schedule a cycle to start things */
 	work_queue(HPWORK, &_work, (worker_t)&MB12XX::cycle_trampoline, this, 1);
@@ -713,15 +729,18 @@ test()
 	warnx("measurement: %0.2f m", (double)report.distance);
 	warnx("time:        %lld", report.timestamp);
 
-	/* start the sensor polling at 2Hz */
+
+/*
+
+	// start the sensor polling at 2Hz
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2))
 		errx(1, "failed to set 2Hz poll rate");
 
-	/* read the sensor 5x and report each value */
-	for (unsigned i = 0; i < 5; i++) {
+	// read the sensor 5x and report each value
+	for (unsigned i = 0; i < 50; i++) {
 		struct pollfd fds;
 
-		/* wait for data to be ready */
+		// wait for data to be ready
 		fds.fd = fd;
 		fds.events = POLLIN;
 		ret = poll(&fds, 1, 2000);
@@ -729,7 +748,7 @@ test()
 		if (ret != 1)
 			errx(1, "timed out waiting for sensor data");
 
-		/* now go get it */
+		// now go get it
 		sz = read(fd, &report, sizeof(report));
 
 		if (sz != sizeof(report))
@@ -741,6 +760,8 @@ test()
 	}
 
 	errx(0, "PASS");
+
+*/
 }
 
 /**

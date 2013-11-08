@@ -44,6 +44,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_combined.h>
+#include <drivers/drv_range_finder.h>
 #include <uORB/topics/vehicle_attitude.h>
 
 __EXPORT int px4_simple_app_main(int argc, char *argv[]);
@@ -53,7 +54,7 @@ int px4_simple_app_main(int argc, char *argv[])
 	printf("Hello Sky!\n");
 
 	/* subscribe to sensor_combined topic */
-	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_combined));
+	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_range_finder));
 	orb_set_interval(sensor_sub_fd, 1000);
 
 	/* advertise attitude topic */
@@ -91,19 +92,17 @@ int px4_simple_app_main(int argc, char *argv[])
 	 
 			if (fds[0].revents & POLLIN) {
 				/* obtained data for the first file descriptor */
-				struct sensor_combined_s raw;
+				struct range_finder_report raw;
 				/* copy sensors raw data into local buffer */
-				orb_copy(ORB_ID(sensor_combined), sensor_sub_fd, &raw);
-				printf("[px4_simple_app] Accelerometer:\t%8.4f\t%8.4f\t%8.4f\n",
-					(double)raw.accelerometer_m_s2[0],
-					(double)raw.accelerometer_m_s2[1],
-					(double)raw.accelerometer_m_s2[2]);
+				orb_copy(ORB_ID(sensor_range_finder), sensor_sub_fd, &raw);
+				printf("[px4_simple_app] Current:\t%8.4f\n", (double)raw.distance);
+				printf("[px4_simple_app] Timestamp:\t%8.4f\n", (double)raw.timestamp);
 
-				/* set att and publish this information for other apps */
+				/* set att and publish this information for other apps
 				att.roll = raw.accelerometer_m_s2[0];
 				att.pitch = raw.accelerometer_m_s2[1];
 				att.yaw = raw.accelerometer_m_s2[2];
-				orb_publish(ORB_ID(vehicle_attitude), att_pub, &att);
+				orb_publish(ORB_ID(vehicle_attitude), att_pub, &att);	*/
 			}
 			/* there could be more file descriptors here, in the form like:
 			 * if (fds[1..n].revents & POLLIN) {}
