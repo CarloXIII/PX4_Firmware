@@ -410,6 +410,7 @@ XSENS::print_status()
 	printf("\nSensor packet:");
 	printf("\naltitude barometer: %.3f", _report_sensor_combined.baro_alt_meter);
 	printf("\npressure barometer: %.3f", _report_sensor_combined.baro_pres_mbar);
+	printf("\ntemp barometer: %.3f", _report_sensor_combined.baro_temp_celcius);
 
 	printf("\ngyro x [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[0]);
 	printf("\ngyro y [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[1]);
@@ -423,7 +424,7 @@ XSENS::print_status()
 	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
 	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
 
-	printf("\nroll : %.3f", _report_vehicle_attitude.roll); // XXX EINHEIT EINFÜGEN
+	printf("\nroll : %.3f", _report_vehicle_attitude.roll);
 	printf("\npitch : %.3f", _report_vehicle_attitude.pitch);
 	printf("\nyaw : %.3f", _report_vehicle_attitude.yaw);
 

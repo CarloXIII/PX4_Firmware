@@ -97,9 +97,11 @@ commander start
 xsens start
  
 #
-# Start the attitude estimator
+# Start the attitude position estimator
+# This is the internal Kalman Filter of the PX4
 #
-attitude_estimator_ekf start
+att_pos_estimator_ekf start
+usleep 5000
  
 #
 # Start sdlog2 with 50Hz

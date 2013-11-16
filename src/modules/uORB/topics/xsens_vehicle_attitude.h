@@ -59,9 +59,9 @@
 struct xsens_vehicle_attitude_s {
 
 	uint64_t timestamp;	/**< in microseconds since system start          */
-	float roll;		/**< Roll angle (rad, Tait-Bryan, NED)				*/
-	float pitch;		/**< Pitch angle (rad, Tait-Bryan, NED)				*/
-	float yaw;		/**< Yaw angle (rad, Tait-Bryan, NED)				*/
+	float roll;		/**< Roll angle (rad, Tait-Bryan, NED)		XXX		*/
+	float pitch;		/**< Pitch angle (rad, Tait-Bryan, NED)		XXX		*/
+	float yaw;		/**< Yaw angle (rad, Tait-Bryan, NED)		XXX		*/
 };
 
 /**

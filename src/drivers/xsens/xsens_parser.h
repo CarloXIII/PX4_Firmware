@@ -84,40 +84,40 @@ typedef struct {
 }xsens_temp_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t magz; /**< XXX */
-	float_t magy; /**< XXX */
-	float_t magx; /**< XXX */
-	float_t gyrz; /**< XXX */
-	float_t gyry; /**< XXX */
-	float_t gyrx; /**< XXX */
-	float_t accz; /**< XXX */
-	float_t accy; /**< XXX */
-	float_t accx; /**< XXX */
+	float_t magz; /**< Magnetic field z-axis [Arbitary Unit] XXX Einheit ausfindig machen*/
+	float_t magy; /**< Magnetic field y-axis [Arbitary Unit] XXX*/
+	float_t magx; /**< Magnetic field x-axis [Arbitary Unit] XXX*/
+	float_t gyrz; /**< Angular rate z-axis [rad/s] */
+	float_t gyry; /**< Angular rate y-axis [rad/s] */
+	float_t gyrx; /**< Angular rate x-axis [rad/s] */
+	float_t accz; /**< Acceleration z-axis [m/s^2] */
+	float_t accy; /**< Acceleration y-axis [m/s^2] */
+	float_t accx; /**< Acceleration x-axis [m/s^2] */
 }xsens_calibrated_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t q3; /**< XXX */
-	float_t q2; /**< XXX */
-	float_t q1; /**< XXX */
-	float_t q0; /**< XXX */
+	float_t q3; /**< Orientation quaternion format XXX*/
+	float_t q2; /**< Orientation quaternion format XXX*/
+	float_t q1; /**< Orientation quaternion format XXX*/
+	float_t q0; /**< Orientation quaternion format XXX*/
 }xsens_orientation_quaternion_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t yaw; /**< XXX */
-	float_t pitch; /**< XXX */
-	float_t roll; /**< XXX */
+	float_t yaw; /**< yaw angle Orientation Euler angles format [deg] */
+	float_t pitch; /**< pitch angle Orientation Euler angles format [deg] */
+	float_t roll; /**< roll angle Orientation Euler angles format [deg] */
 }xsens_orientation_euler_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t i; /**< XXX */
-	float_t h; /**< XXX */
-	float_t g; /**< XXX */
-	float_t f; /**< XXX */
-	float_t e; /**< XXX */
-	float_t d; /**< XXX */
-	float_t c; /**< XXX */
-	float_t b; /**< XXX */
-	float_t a; /**< XXX */
+	float_t i; /**< Orientation matrix format XXX */
+	float_t h; /**< Orientation matrix format XXX */
+	float_t g; /**< Orientation matrix format XXX */
+	float_t f; /**< Orientation matrix format XXX */
+	float_t e; /**< Orientation matrix format XXX */
+	float_t d; /**< Orientation matrix format XXX */
+	float_t c; /**< Orientation matrix format XXX */
+	float_t b; /**< Orientation matrix format XXX */
+	float_t a; /**< Orientation matrix format XXX */
 }xsens_orientation_matrix_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
@@ -126,15 +126,15 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 }xsens_auxiliary_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t alt; /**< XXX */
-	float_t lon; /**< XXX */
-	float_t lat; /**< XXX */
+	float_t alt; /**< Height above earth [m] */
+	float_t lon; /**< Longitude according to WGS 84 [deg] */
+	float_t lat; /**< Latitude according to WGS 84 [deg] */
 }xsens_position_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t velz; /**< XXX */
-	float_t vely; /**< XXX */
-	float_t velx; /**< XXX */
+	float_t velz; /**< Velocity Up/Down (depends on setting) [m/s] */
+	float_t vely; /**< Velocity West/East (depends on setting) [m/s] */
+	float_t velx; /**< Velocity North (depends on setting) [m/s] */
 }xsens_velocity_data_t;
 
 typedef struct {
