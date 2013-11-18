@@ -78,6 +78,9 @@ ORB_DEFINE(sensor_combined, struct sensor_combined_s);
 #include "topics/xsens_sensor_combined.h"
 ORB_DEFINE(xsens_sensor_combined, struct xsens_sensor_combined_s);
 
+#include "topics/vehicle_paraglider_angle.h"
+ORB_DEFINE(vehicle_paraglider_angle, struct vehicle_paraglider_angle_s);
+
 #include "topics/vehicle_gps_position.h"
 ORB_DEFINE(vehicle_gps_position, struct vehicle_gps_position_s);
 
