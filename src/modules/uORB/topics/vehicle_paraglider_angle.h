@@ -52,10 +52,14 @@
  * Relativ angle.
  */
 struct vehicle_paraglider_angle_s {
-	uint64_t 	timestamp;			/**< Timestamp in microseconds since boot         */
-	float 		voltage_left;		/**< Voltage from potentiometer left [V] */
-	float 		voltage_right;		/**< Voltage from potentiometer right [V] */
+
+	uint64_t error_count;
+	uint8_t valid;					/** 1 == within sensor range, 0 = outside sensor range */
+	uint64_t 	timestamp_left;		/**< Timestamp in microseconds since boot         */
+	float 		raw_left;			/** Raw value from max127 adc of the left potentiometer */
 	float 		angle_left;     	/**< Angle between left breakline and vehicle [rad] */
+	uint64_t 	timestamp_right;	/**< Timestamp in microseconds since boot */
+	float 		raw_right;			/** Raw value from max127 adc of the right potentiometer */
 	float 		angle_right;     	/**< Angle between right breakline and vehicle [rad] */
 	uint32_t 	angle_counter; 		/**< Number of raw adc measurements taken        */
 

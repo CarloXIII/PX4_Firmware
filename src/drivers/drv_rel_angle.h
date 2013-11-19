@@ -49,19 +49,6 @@
 
 #define REL_ANGLE_DEVICE_PATH	"/dev/rel_angle"
 
-/**
- * relativ angle report structure.  Reads from the device must be in multiples of this
- * structure.
- */
-struct rel_angle_report {
-	uint64_t timestamp;
-	float raw_left; 			/** Raw value from max127 adc of the left potentiometer [V] */
-	float angle_left; 			/** Relativ angle left between vehicle and paraglider [rad] */
-	float raw_right; 			/** Raw value from max127 adc of the right potentiometer [V] */
-	float angle_right; 			/** Relativ angle right between vehicle and paraglider [rad] */
-};
-
-
 /*
  * ObjDev tag for max127 data.
  */
