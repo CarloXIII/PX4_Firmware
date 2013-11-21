@@ -44,7 +44,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_combined.h>
-#include <drivers/drv_range_finder.h>
+#include <drivers/drv_current_sensor.h>
 #include <uORB/topics/vehicle_attitude.h>
 
 __EXPORT int px4_simple_app_main(int argc, char *argv[]);
@@ -54,7 +54,7 @@ int px4_simple_app_main(int argc, char *argv[])
 	printf("Hello Sky!\n");
 
 	/* subscribe to sensor_combined topic */
-	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_range_finder));
+	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_current_sensor));
 	orb_set_interval(sensor_sub_fd, 1000);
 
 	/* advertise attitude topic */
@@ -92,18 +92,18 @@ int px4_simple_app_main(int argc, char *argv[])
 	 
 			if (fds[0].revents & POLLIN) {
 				/* obtained data for the first file descriptor */
-				struct range_finder_report raw;
+				struct current_sensor_report raw;
 				/* copy sensors raw data into local buffer */
-				orb_copy(ORB_ID(sensor_range_finder), sensor_sub_fd, &raw);
+				orb_copy(ORB_ID(sensor_current_sensor), sensor_sub_fd, &raw);
 				printf("[px4_simple_app] Timestamp:\t%d\n", (double)raw.timestamp);
-				printf("[px4_simple_app] Current 1:\t%d\n", raw.vin1);
-				printf("[px4_simple_app] Current 2:\t%d\n", raw.vin2);
-				printf("[px4_simple_app] Current 3:\t%d\n", raw.vin3);
-				printf("[px4_simple_app] Current 4:\t%d\n", raw.vin4);
-				printf("[px4_simple_app] Current 5:\t%d\n", raw.vin5);
-				printf("[px4_simple_app] Current 6:\t%d\n", raw.vin6);
-				printf("[px4_simple_app] Current 7:\t%d\n", raw.vin7);
-				printf("[px4_simple_app] Current 8:\t%d\n", raw.vin8);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin1 >>12, (0x0FFF) & raw.vin1);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin2 >>12, (0x0FFF) & raw.vin2);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin3 >>12, (0x0FFF) & raw.vin3);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin4 >>12, (0x0FFF) & raw.vin4);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin5 >>12, (0x0FFF) & raw.vin5);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin6 >>12, (0x0FFF) & raw.vin6);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin7 >>12, (0x0FFF) & raw.vin7);
+				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin8 >>12, (0x0FFF) & raw.vin8);
 
 				printf("[px4_simple_app] CONFIGURATION REGISTER :\t%d\n", raw.valid);
 

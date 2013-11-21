@@ -155,7 +155,7 @@ private:
 /*
  * Driver 'main' command.
  */
-extern "C" __EXPORT int mb12xx_main(int argc, char *argv[]);
+extern "C" __EXPORT int current_sensor_main(int argc, char *argv[]);
 
 MB12XX::MB12XX(int bus, int address) :
 	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 100000),
@@ -166,9 +166,9 @@ MB12XX::MB12XX(int bus, int address) :
 	_measure_ticks(0),
 	_collect_phase(false),
 	_range_finder_topic(-1),
-	_sample_perf(perf_alloc(PC_ELAPSED, "mb12xx_read")),
-	_comms_errors(perf_alloc(PC_COUNT, "mb12xx_comms_errors")),
-	_buffer_overflows(perf_alloc(PC_COUNT, "mb12xx_buffer_overflows"))
+	_sample_perf(perf_alloc(PC_ELAPSED, "current_sensor_read")),
+	_comms_errors(perf_alloc(PC_COUNT, "current_sensor_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "current_sensor_buffer_overflows"))
 {
 	// enable debug() calls
 	_debug_enabled = true;
@@ -460,14 +460,31 @@ MB12XX::collect()
 	report.timestamp = hrt_absolute_time();
         report.error_count = perf_event_count(_comms_errors);
 
-	report.vin1 = ((((0x0F) & val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
+	/*report.vin1 = ((((0x0F) & val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
 	report.vin2 = ((((0x0F) & val[2]) << 8) | val[3]);
 	report.vin3 = ((((0x0F) & val[4]) << 8) | val[5]);
 	report.vin4 = ((((0x0F) & val[6]) << 8) | val[7]);
 	report.vin5 = ((((0x0F) & val[8]) << 8) | val[9]);
 	report.vin6 = ((((0x0F) & val[10]) << 8) | val[11]);
 	report.vin7 = ((((0x0F) & val[12]) << 8) | val[13]);
-	report.vin8 = ((((0x0F) & val[14]) << 8) | val[15]);
+	report.vin8 = ((((0x0F) & val[14]) << 8) | val[15]);*/
+
+	report.vin1 = (((val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
+	report.vin2 = (((val[2]) << 8) | val[3]);
+	report.vin3 = (((val[4]) << 8) | val[5]);
+	report.vin4 = (((val[6]) << 8) | val[7]);
+	report.vin5 = (((val[8]) << 8) | val[9]);
+	report.vin6 = (((val[10]) << 8) | val[11]);
+	report.vin7 = (((val[12]) << 8) | val[13]);
+	report.vin8 = (((val[14]) << 8) | val[15]);
+
+
+
+	// Set the Configuration Register and activate the channels to be converted
+	uint8_t cmdxxxxx [3] = {0x02, 0x0F, 0xFD};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+												//Configreg: 0bxxxx111111111101
+	ret = transfer(&cmdxxxxx[0], 3, nullptr, 0);
+
 
 
 
@@ -510,8 +527,8 @@ MB12XX::start()
 	// Set the Configuration Register and activate the channels to be converted
 	int ret;
 
-	uint8_t cmd [3] = {0x02, 0x0F, 0xF8};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111000
+	uint8_t cmd [3] = {0x02, 0x0F, 0xFD};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+												//Configreg: 0bxxxx111111111101
 	ret = transfer(&cmd[0], 3, nullptr, 0);
 
 	if (OK != ret)
@@ -624,7 +641,7 @@ MB12XX::print_info()
 /**
  * Local functions in support of the shell command.
  */
-namespace mb12xx
+namespace current_sensor
 {
 
 /* oddly, ERROR is not defined for c++ */
@@ -715,7 +732,7 @@ test()
 	int fd = open(CURRENT_SENSOR_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0)
-		err(1, "%s open failed (try 'mb12xx start' if the driver is not running", CURRENT_SENSOR_DEVICE_PATH);
+		err(1, "%s open failed (try 'current_sensor start' if the driver is not running", CURRENT_SENSOR_DEVICE_PATH);
 
 	/* do a simple demand read */
 	sz = read(fd, &report, sizeof(report));
@@ -800,37 +817,37 @@ info()
 } // namespace
 
 int
-mb12xx_main(int argc, char *argv[])
+current_sensor_main(int argc, char *argv[])
 {
 	/*
 	 * Start/load the driver.
 	 */
 	if (!strcmp(argv[1], "start"))
-		mb12xx::start();
+		current_sensor::start();
 
 	 /*
 	  * Stop the driver
 	  */
 	 if (!strcmp(argv[1], "stop"))
-		 mb12xx::stop();
+		 current_sensor::stop();
 
 	/*
 	 * Test the driver/device.
 	 */
 	if (!strcmp(argv[1], "test"))
-		mb12xx::test();
+		current_sensor::test();
 
 	/*
 	 * Reset the driver.
 	 */
 	if (!strcmp(argv[1], "reset"))
-		mb12xx::reset();
+		current_sensor::reset();
 
 	/*
 	 * Print driver information.
 	 */
 	if (!strcmp(argv[1], "info") || !strcmp(argv[1], "status"))
-		mb12xx::info();
+		current_sensor::info();
 
 	errx(1, "unrecognized command, try 'start', 'test', 'reset' or 'info'");
 }
