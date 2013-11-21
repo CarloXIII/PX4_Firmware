@@ -39,6 +39,7 @@ MODULES		+= drivers/ets_airspeed
 MODULES		+= drivers/meas_airspeed
 MODULES		+= modules/sensors
 MODULES     += drivers/xsens
+MODULES		+= drivers/max127
 
 #
 # System commands

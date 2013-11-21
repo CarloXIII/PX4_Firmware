@@ -49,15 +49,32 @@
 
 #define REL_ANGLE_DEVICE_PATH	"/dev/rel_angle"
 
+/**
+ * Maximum number of used ADC Channels
+ */
+#define MAX127_USED_CHANNELS	2
+
+/**
+ * rel_angle report structure.  Reads from the device must be in multiples of this
+ * structure.
+ */
+struct rel_angle_report {
+	uint64_t timestamp[MAX127_USED_CHANNELS];		/* Timestamp for each channel */
+	uint64_t error_count[MAX127_USED_CHANNELS];		/* Error_count for each channel */
+	uint16_t value[MAX127_USED_CHANNELS];			/* Raw Value for each channel */
+	float si_units[MAX127_USED_CHANNELS];			/* si_units for each channel */
+
+};
+
 /*
  * ObjDev tag for max127 data.
  */
-ORB_DECLARE(rel_angle);
+ORB_DECLARE(vehicle_paraglider_angle);
 
 /*
  * ioctl() definitions
  */
-#define _REL_ANGLEIOCBASE			(0x2600)            //TODO: arbitrary choice...
+#define _REL_ANGLEIOCBASE			(0x7900)
 #define _REL_ANGLEIOC(_n)		(_IOC(_REL_ANGLEIOCBASE, _n))
 
 #endif /* _DRV_REL_ANGLE_H */
