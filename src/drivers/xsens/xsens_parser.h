@@ -84,9 +84,9 @@ typedef struct {
 }xsens_temp_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t magz; /**< Magnetic field z-axis [Arbitary Unit] XXX Einheit ausfindig machen*/
-	float_t magy; /**< Magnetic field y-axis [Arbitary Unit] XXX*/
-	float_t magx; /**< Magnetic field x-axis [Arbitary Unit] XXX*/
+	float_t magz; /**< Magnetic field z-axis [Arbitary Unit] */
+	float_t magy; /**< Magnetic field y-axis [Arbitary Unit] */
+	float_t magx; /**< Magnetic field x-axis [Arbitary Unit] */
 	float_t gyrz; /**< Angular rate z-axis [rad/s] */
 	float_t gyry; /**< Angular rate y-axis [rad/s] */
 	float_t gyrx; /**< Angular rate x-axis [rad/s] */
@@ -103,9 +103,9 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 }xsens_orientation_quaternion_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t yaw; /**< yaw angle Orientation Euler angles format [deg] */
-	float_t pitch; /**< pitch angle Orientation Euler angles format [deg] */
-	float_t roll; /**< roll angle Orientation Euler angles format [deg] */
+	float_t yaw;	/**< yaw angle Orientation Euler angles format [deg] */
+	float_t pitch;	/**< pitch angle Orientation Euler angles format [deg] */
+	float_t roll;	/**< roll angle Orientation Euler angles format [deg] */
 }xsens_orientation_euler_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
@@ -146,14 +146,14 @@ typedef struct {
 }xsens_sample_counter_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	uint8_t status; /**< 0x01 = Valid Time of Week; 0x02 = Valid Week Number; 0x04 = Valid UTC (Leap Seconds already known?) */
-	uint8_t seconds; /**< Seconds of minute, range 0 .. 59 */
-	uint8_t minute; /**< Minute of hour, range 0 .. 59 */
-	uint8_t hour; /**< Hour of day, range 0 .. 23 */
-	uint8_t day; /**< Day of month, range 1 .. 31 */
-	uint8_t month; /**< Month, range 1 .. 12 */
-	uint16_t year; /**< Year, range 1999 .. 2099 */
-	uint32_t nsec; /**< Nanoseconds of second, range 0 .. 1.000.000.000 */
+	uint8_t status;		/**< 0x01 = Valid Time of Week; 0x02 = Valid Week Number; 0x04 = Valid UTC (Leap Seconds already known?) */
+	uint8_t seconds;	/**< Seconds of minute, range 0 .. 59 */
+	uint8_t minute;		/**< Minute of hour, range 0 .. 59 */
+	uint8_t hour;		/**< Hour of day, range 0 .. 23 */
+	uint8_t day;		/**< Day of month, range 1 .. 31 */
+	uint8_t month;		/**< Month, range 1 .. 12 */
+	uint16_t year;		/**< Year, range 1999 .. 2099 */
+	uint32_t nsec;		/**< Nanoseconds of second, range 0 .. 1.000.000.000 */
 }xsens_utc_time_t;
 
 #pragma pack(pop)

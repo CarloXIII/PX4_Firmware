@@ -77,23 +77,18 @@
 #define MAX127_BUS 				PX4_I2C_BUS_EXPANSION	/* The I2C Bus where the max127 is wired */
 #define MAX127_BASEADDR 		0x28					/* 7-bit address. 8-bit address is 0x50 */
 
-#define MAX127_INPUT_RANGE		0		/* Defines the input range 0=0-5V ; 1=0-10V ; 2=-5-5V ; 3=-10-10V */
+#define MAX127_INPUT_RANGE		0		/* Defines the input range (0=0-5V ; 1=0-10V ; 2=-5-5V ; 3=-10-10V) */
+#define MAX127_USED_CHANNELS	2		/* Defines the number of used channels. The used channels must begin from channel 0 */
 
-#define MAX127_CONVERSION_INTERVAL 1000	/* Time until the IC has completed the conversion (it could be zero) 1ms*/
+#define MAX127_CONVERSION_INTERVAL 1000	/* Time until the IC has completed a conversion (it could be zero) 1ms*/
 
 /* Constants who are only relevant for the relative angle measurement between vehicle and paraglider */
 
-/* Limits of the detectable raw values potentiometer for angle measurement between vehicle and paraglider */
-#define MIN_RAW_LEFT (0.0)			/* Defines the minimal raw value with the left Potentiometer */
-#define MAX_RAW_LEFT (4095.0)		/* Defines the maximum raw value with the left Potentiometer */
-#define MIN_RAW_RIGHT (0.0)			/* Defines the minimal raw value with the right Potentiometer */
-#define MAX_RAW_RIGHT (4095.0)		/* Defines the maximum raw value with the right Potentiometer */
+#define RAW_AT_ZERO_LEFT 1000.0		/* Defines the raw value where the angle should be zero for the left potentiometer */
+#define RAW_AT_ZERO_RIGHT 1000.0	/* Defines the raw value where the angle should be zero for the right potentiometer */
+#define RAW_AT_PI_LEFT 2500.0		/* Defines the raw value where the angle should be pi for the left potentiometer */
+#define RAW_AT_PI_RIGHT 2500.0		/* Defines the raw value where the angle should be pi for the right potentiometer */
 
-/* Limits of the detectable angles between vehicle and paraglider */
-#define MIN_ANGLE_LEFT (0.0)		/* Defines the minimal detectable angle in radiant with the left Potentiometer */
-#define MAX_ANGLE_LEFT (M_TWOPI)	/* Defines the maximum detectable angle in radiant with the left Potentiometer */
-#define MIN_ANGLE_RIGHT (0.0)		/* Defines the minimal detectable angle in radiant with the right Potentiometer */
-#define MAX_ANGLE_RIGHT (M_TWOPI)	/* Defines the maximum detectable angle in radiant with the right Potentiometer */
 
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
@@ -125,14 +120,9 @@ protected:
 	virtual int			probe();
 
 private:
-	float _min_raw_left; 		/* Defines the minimal raw value with the left Potentiometer */
-	float _max_raw_left; 		/* Defines the maximum raw value with the left Potentiometer */
-	float _min_raw_right; 		/* Defines the minimal raw value with the right Potentiometer */
-	float _max_raw_right; 		/* Defines the maximum raw value with the right Potentiometer */
-	float _min_angle_left; 		/* Defines the minimal detectable angle with the left Potentiometer */
-	float _max_angle_left; 		/* Defines the maximum detectable angle with the left Potentiometer */
-	float _min_angle_right;		/* Defines the minimal detectable angle with the right Potentiometer */
-	float _max_angle_right; 	/* Defines the maximum detectable angle with the right potentiometer */
+	int					_raw_at_zero[MAX127_USED_CHANNELS]; 	/* The raw value where the angle should be zero for the specific channel */
+	int					_raw_at_pi[MAX127_USED_CHANNELS];		/* The raw value where the angle should be pi for the specific channel */
+	int					_max127_channel;	/* The current channel to read data from it */
 	work_s				_work;
 	RingBuffer		*_reports;
 	bool				_sensor_ok;
@@ -168,27 +158,19 @@ private:
 	void				stop();
 	
 	/**
-	 * Set the min and max angle and raw value thresholds if you want the end points of the sensors
-	 * range to be brought in at all, otherwise it will use the defaults values
+	 * Set the raw values where the angle should be zero and pi. This is used to detect the offset
+	 * and calculate the si_units. Otherwise it will use the defaults values
 	 */
-	void set_minimum_raw_left(float min);
-	void set_maximum_raw_left(float max);
-	void set_minimum_raw_right(float min);
-	void set_maximum_raw_right(float max);
-	void set_minimum_angle_left(float min);
-	void set_maximum_angle_left(float max);
-	void set_minimum_angle_right(float min);
-	void set_maximum_angle_right(float max);
+	void set_raw_at_zero(int channel,int raw);
+	void set_raw_at_pi(int channel,int raw);
+	void set_max127_channel(int channel);
 
-	float get_minimum_raw_left();
-	float get_maximum_raw_left();
-	float get_minimum_raw_right();
-	float get_maximum_raw_right();
-	float get_minimum_angle_left();
-	float get_maximum_angle_left();
-	float get_minimum_angle_right();
-	float get_maximum_angle_right();
-	
+	int get_raw_at_zero(int channel);
+	int get_raw_at_pi(int channel);
+	int get_max127_channel();
+
+
+
 	/**
 	* Perform a poll cycle; collect from the previous measurement
 	* and start a new one.
@@ -214,14 +196,7 @@ extern "C" __EXPORT int max127_main(int argc, char *argv[]);
 
 MAX127::MAX127(int bus, int address) :
 	I2C("MAX127", REL_ANGLE_DEVICE_PATH, bus, address, 100000),
-	_min_raw_left(MIN_RAW_LEFT),
-	_max_raw_left(MAX_RAW_LEFT),
-	_min_raw_right(MIN_RAW_RIGHT),
-	_max_raw_right(MAX_RAW_RIGHT),
-	_min_angle_left(MIN_ANGLE_LEFT),
-	_max_angle_left(MAX_ANGLE_LEFT),
-	_min_angle_right(MIN_ANGLE_RIGHT),
-	_max_angle_right(MAX_ANGLE_RIGHT),
+	_max127_channel(0),
 	_reports(nullptr),
 	_sensor_ok(false),
 	_measure_ticks(0),
@@ -233,6 +208,10 @@ MAX127::MAX127(int bus, int address) :
 {
 	// enable debug() calls
 	_debug_enabled = true;
+	_raw_at_zero[0] = RAW_AT_ZERO_LEFT;
+	_raw_at_zero[1] = RAW_AT_ZERO_RIGHT;
+	_raw_at_pi[0] = RAW_AT_PI_LEFT;
+	_raw_at_pi[1] = RAW_AT_PI_RIGHT;
 	
 	// work_cancel in the dtor will explode if we don't do this...
 	memset(&_work, 0, sizeof(_work));
@@ -263,7 +242,7 @@ MAX127::init()
 	if (_reports == nullptr)
 		goto out;
 
-	/* get a publish handle on the range finder topic */
+	/* get a publish handle on the rel angle topic */
 	struct rel_angle_report zero_report;
 	memset(&zero_report, 0, sizeof(zero_report));
 	_rel_angle_topic = orb_advertise(ORB_ID(vehicle_paraglider_angle), &zero_report);
@@ -272,7 +251,7 @@ MAX127::init()
 		debug("failed to create sensor_rel_angle object. Did you start uOrb?");
 
 	ret = OK;
-	/* sensor is ok, but we don't really know if it is within range */
+	/* sensor is ok, but we don't really know if it work correctly */
 	_sensor_ok = true;
 out:
 	return ret;
@@ -284,69 +263,30 @@ MAX127::probe()
 	return measure();
 }
 
-void MAX127::set_minimum_raw_left(float min) {
-	_min_raw_left = min;
+void MAX127::set_raw_at_zero(int ch,int raw) {
+	_raw_at_zero[ch] = raw;
 }
 
-void MAX127::set_maximum_raw_left(float max) {
-	_max_raw_left = max;
+void MAX127::set_raw_at_pi(int ch,int raw) {
+	_raw_at_pi[ch] = raw;
 }
 
-void MAX127::set_minimum_raw_right(float min) {
-	_min_raw_right = min;
+void MAX127::set_max127_channel(int ch){
+	_max127_channel = ch;
 }
 
-void MAX127::set_maximum_raw_right(float max) {
-	_max_raw_right = max;
+int MAX127::get_raw_at_zero(int ch) {
+	return _raw_at_zero[ch];
 }
 
-void MAX127::set_minimum_angle_left(float min) {
-	_min_angle_left = min;
+int MAX127::get_raw_at_pi(int ch) {
+	return _raw_at_pi[ch];
 }
 
-void MAX127::set_maximum_angle_left(float max) {
-	_max_angle_left = max;
+int MAX127::get_max127_channel() {
+	return _max127_channel;
 }
 
-void MAX127::set_minimum_angle_right(float min) {
-	_min_angle_right = min;
-}
-
-void MAX127::set_maximum_angle_right(float max) {
-	_max_angle_right = max;
-}
-
-float MAX127::get_minimum_raw_left() {
-	return _min_raw_left;
-}
-
-float MAX127::get_maximum_raw_left() {
-	return _max_raw_left;
-}
-
-float MAX127::get_minimum_raw_right() {
-	return _min_raw_right;
-}
-
-float MAX127::get_maximum_raw_right() {
-	return _max_raw_right;
-}
-
-float MAX127::get_minimum_angle_left() {
-	return _min_angle_left;
-}
-
-float MAX127::get_maximum_angle_left() {
-	return _max_angle_left;
-}
-
-float MAX127::get_minimum_angle_right() {
-	return _min_angle_right;
-}
-
-float MAX127::get_maximum_angle_right() {
-	return _max_angle_right;
-}
 
 int
 MAX127::ioctl(struct file *filp, int cmd, unsigned long arg)
@@ -508,10 +448,19 @@ MAX127::measure()
 	int ret;
 	uint8_t cmd;
 
+	/* Create the control-byte depend on input value and channel */
+	switch (MAX127_INPUT_RANGE)
+	{
+	case 0 : cmd = (0x80 | (get_max127_channel()<<4));	break; /* 0V - 5V */
+	case 1 : cmd = (0x88 | (get_max127_channel()<<4));	break; /* 0V - 10V */
+	case 2 : cmd = (0x84 | (get_max127_channel()<<4));	break; /* -5V - 5V */
+	case 3 : cmd = (0x8c | (get_max127_channel()<<4));	break; /* -10V - 10V */
+	default : cmd = (0x80 | (get_max127_channel()<<4));	break; /* 0 - 5V */
+	}
+
 	/*
 	 * Send the command to begin a measurement.
 	 */
-	cmd = 0x80;
 	ret = transfer(&cmd, 1, nullptr, 0);
 
 	if (OK != ret)
@@ -529,6 +478,8 @@ int
 MAX127::collect()
 {
 	int	ret = -EIO;
+	int channel = get_max127_channel();
+	float si_units;
 	
 	/* read from the sensor */
 	uint8_t val[2] = {0, 0};
@@ -547,12 +498,13 @@ MAX127::collect()
 	
 	uint16_t value = val[0] << 8 | val[1]; /* Convert two data-bytes to one */
 	value = value >> 4; /* shift the value 4 bits to the left side because the last 4 bits of the second data-byte are zero*/
-	float si_units = (value * 1.0f)/ 100.0f; /* cm to m XXX*/
+	si_units = ((M_PI/(get_raw_at_pi(0)-get_raw_at_zero(0)))*value) - ((M_PI/(get_raw_at_pi(0)-get_raw_at_zero(0)))*get_raw_at_zero(0));
 	struct rel_angle_report report;
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	report.timestamp[0] = hrt_absolute_time();
-        report.error_count[0] = perf_event_count(_comms_errors);
+    report.error_count[0] = perf_event_count(_comms_errors);
+    report.value[0] = value;
 	report.si_units[0] = si_units;
 
 	
@@ -569,6 +521,7 @@ MAX127::collect()
 	ret = OK;
 
 	perf_end(_sample_perf);
+
 	return ret;
 }
 
@@ -587,7 +540,7 @@ MAX127::start()
 		true,
 		true,
 		true,
-		SUBSYSTEM_TYPE_RELANGLE}; //XXX wath is this for?
+		SUBSYSTEM_TYPE_RELANGLE};
 	static orb_advert_t pub = -1;
 
 	if (pub > 0) {
@@ -614,6 +567,20 @@ MAX127::cycle_trampoline(void *arg)
 void
 MAX127::cycle()
 {
+	/* measurement phase */
+	if (OK != measure())
+	{
+		log("measure error");
+		/* restart the measurement state machine */
+		start();
+		return;
+	}
+	else
+	{
+	/* next phase is collection */
+	_collect_phase = true;
+	}
+
 	/* collection phase? */
 	if (_collect_phase) {
 
@@ -628,30 +595,9 @@ MAX127::cycle()
 		/* next phase is measurement */
 		_collect_phase = false;
 
-		/*
-		 * Is there a collect->measure gap?
-		 */
-		if (_measure_ticks > USEC2TICK(MAX127_CONVERSION_INTERVAL)) {
-
-			/* schedule a fresh cycle call when we are ready to measure again */
-			work_queue(HPWORK,
-				   &_work,
-				   (worker_t)&MAX127::cycle_trampoline,
-				   this,
-				   _measure_ticks - USEC2TICK(MAX127_CONVERSION_INTERVAL));
-
-			return;
-		}
 	}
 
-	/* measurement phase */
-	if (OK != measure())
-		log("measure error");
-
-	/* next phase is collection */
-	_collect_phase = true;
-
-	/* schedule a fresh cycle call when the measurement is done */
+	/* schedule a fresh cycle call when the cycle is done */
 	work_queue(HPWORK,
 		   &_work,
 		   (worker_t)&MAX127::cycle_trampoline,
@@ -772,8 +718,13 @@ test()
 		err(1, "immediate read failed");
 
 	warnx("single read");
-	warnx("measurement: %0.2f m", (double)report.si_units[0]);
-	warnx("time:        %lld", report.timestamp[0]);
+	for(int ch=0 ; ch < MAX127_USED_CHANNELS ; ch++)
+	{
+	warnx("channel %d",ch);
+	warnx("raw value: %u",report.value[ch]);
+	warnx("measurement: %0.4f m", (double)report.si_units[ch]);
+	warnx("time:        %lld", report.timestamp[ch]);
+	}
 
 	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2))
@@ -798,8 +749,13 @@ test()
 			err(1, "periodic read failed");
 
 		warnx("periodic read %u", i);
-		warnx("measurement: %0.3f", (double)report.si_units[0]);
-		warnx("time:        %lld", report.timestamp[0]);
+		for(int ch=0 ; ch < MAX127_USED_CHANNELS ; ch++)
+		{
+		warnx("channel %d",ch);
+		warnx("raw value: %u",report.value[ch]);
+		warnx("measurement: %0.4f m", (double)report.si_units[ch]);
+		warnx("time:        %lld", report.timestamp[ch]);
+		}
 	}
 
 	errx(0, "PASS");

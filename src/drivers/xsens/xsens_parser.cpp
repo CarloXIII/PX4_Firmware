@@ -297,7 +297,7 @@ XSENS_PARSER::handle_message()
 	/* measured pressure in kPa */
 	float p = (xsens_gps_pvt->press * 2) / 1000.0f;	// Factor 2 is the scale factor of the XSens
 	_xsens_sensor_combined->baro_alt_meter = (float) (((powf((p / p1), (-(a * R) / g))) * T1) - T1) / a;
-	_xsens_sensor_combined->baro_pres_mbar = (xsens_gps_pvt->press * 2) / 1000.0f;
+	_xsens_sensor_combined->baro_pres_mbar = (xsens_gps_pvt->press * 2) / 100.0f;
 	_xsens_sensor_combined->baro_counter += 1;
 
 	_xsens_sensor_combined->differential_pressure_pa = 0;
@@ -393,9 +393,9 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_yaw: %f", xsens_euler->yaw);
 	*/
 
-	_xsens_vehicle_attitude->roll = xsens_euler->roll;
-	_xsens_vehicle_attitude->pitch = xsens_euler->pitch;
-	_xsens_vehicle_attitude->yaw = xsens_euler->yaw;
+	_xsens_vehicle_attitude->roll = (xsens_euler->roll*2*M_PI)/360;
+	_xsens_vehicle_attitude->pitch = (xsens_euler->pitch*2*M_PI)/360;
+	_xsens_vehicle_attitude->yaw = (xsens_euler->yaw*2*M_PI)/360;
 
 	_xsens_vehicle_attitude->timestamp = hrt_absolute_time();
 
