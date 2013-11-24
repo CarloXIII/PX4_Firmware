@@ -78,7 +78,6 @@
 #define MAX127_BASEADDR 		0x28					/* 7-bit address. 8-bit address is 0x50 */
 
 #define MAX127_INPUT_RANGE		0		/* Defines the input range (0=0-5V ; 1=0-10V ; 2=-5-5V ; 3=-10-10V) */
-#define MAX127_USED_CHANNELS	2		/* Defines the number of used channels. The used channels must begin from channel 0 */
 
 #define MAX127_CONVERSION_INTERVAL 1000	/* Time until the IC has completed a conversion (it could be zero) 1ms*/
 
@@ -117,12 +116,14 @@ public:
 	void				print_info();
 	
 protected:
+	/*
+	 * Probe the connection to the MAX127
+	 */
 	virtual int			probe();
 
 private:
 	int					_raw_at_zero[MAX127_USED_CHANNELS]; 	/* The raw value where the angle should be zero for the specific channel */
 	int					_raw_at_pi[MAX127_USED_CHANNELS];		/* The raw value where the angle should be pi for the specific channel */
-	int					_max127_channel;	/* The current channel to read data from it */
 	work_s				_work;
 	RingBuffer		*_reports;
 	bool				_sensor_ok;
@@ -163,13 +164,9 @@ private:
 	 */
 	void set_raw_at_zero(int channel,int raw);
 	void set_raw_at_pi(int channel,int raw);
-	void set_max127_channel(int channel);
 
 	int get_raw_at_zero(int channel);
 	int get_raw_at_pi(int channel);
-	int get_max127_channel();
-
-
 
 	/**
 	* Perform a poll cycle; collect from the previous measurement
@@ -178,6 +175,7 @@ private:
 	void				cycle();
 	int					measure();
 	int					collect();
+
 	/**
 	* Static trampoline from the workq context; because we don't have a
 	* generic workq wrapper yet.
@@ -196,7 +194,6 @@ extern "C" __EXPORT int max127_main(int argc, char *argv[]);
 
 MAX127::MAX127(int bus, int address) :
 	I2C("MAX127", REL_ANGLE_DEVICE_PATH, bus, address, 100000),
-	_max127_channel(0),
 	_reports(nullptr),
 	_sensor_ok(false),
 	_measure_ticks(0),
@@ -260,7 +257,23 @@ out:
 int
 MAX127::probe()
 {
-	return measure();
+		int ret;
+		uint8_t cmd = 0x80; /* Command-Byte for a measure of channel 0 with the range from 0 to 5V */
+
+		/*
+		 * Send the command to begin a measurement.
+		 */
+		ret = transfer(&cmd, 1, nullptr, 0);
+
+		if (OK != ret)
+		{
+			perf_count(_comms_errors);
+			log("i2c::transfer returned %d", ret);
+			return ret;
+		}
+		ret = OK;
+
+		return ret;
 }
 
 void MAX127::set_raw_at_zero(int ch,int raw) {
@@ -271,20 +284,12 @@ void MAX127::set_raw_at_pi(int ch,int raw) {
 	_raw_at_pi[ch] = raw;
 }
 
-void MAX127::set_max127_channel(int ch){
-	_max127_channel = ch;
-}
-
 int MAX127::get_raw_at_zero(int ch) {
 	return _raw_at_zero[ch];
 }
 
 int MAX127::get_raw_at_pi(int ch) {
 	return _raw_at_pi[ch];
-}
-
-int MAX127::get_max127_channel() {
-	return _max127_channel;
 }
 
 
@@ -415,16 +420,17 @@ MAX127::read(struct file *filp, char *buffer, size_t buflen)
 
 	/* manual measurement - run one conversion */
 	do {
+
 		_reports->flush();
 
-		/* trigger a measurement */
-		if (OK != measure()) {
-			ret = -EIO;
-			break;
-		}
-
-		/* wait for it to complete */
-		usleep(MAX127_CONVERSION_INTERVAL);
+//		/* trigger a measurement */
+//		if (OK != measure()) {
+//			ret = -EIO;
+//			break;
+//		}
+//
+//		/* wait for it to complete */
+//		usleep(MAX127_CONVERSION_INTERVAL);
 
 		/* run the collection phase */
 		if (OK != collect()) {
@@ -445,17 +451,62 @@ MAX127::read(struct file *filp, char *buffer, size_t buflen)
 int
 MAX127::measure()
 {
+//	int ret;
+//	int ch = 0;
+//	uint8_t cmd;
+//
+//	/* Create the control-byte depend on input value and channel */
+//	switch (MAX127_INPUT_RANGE)
+//	{
+//	case 0 : cmd = (0x80 | (ch<<4));	break; /* 0V - 5V */
+//	case 1 : cmd = (0x88 | (ch<<4));	break; /* 0V - 10V */
+//	case 2 : cmd = (0x84 | (ch<<4));	break; /* -5V - 5V */
+//	case 3 : cmd = (0x8c | (ch<<4));	break; /* -10V - 10V */
+//	default : cmd = (0x80 | (ch<<4));	break; /* 0 - 5V */
+//	}
+//
+//	/*
+//	 * Send the command to begin a measurement.
+//	 */
+//	ret = transfer(&cmd, 1, nullptr, 0);
+//
+//	if (OK != ret)
+//	{
+//		perf_count(_comms_errors);
+//		log("i2c::transfer returned %d", ret);
+//		return ret;
+//	}
+	int ret = OK;
+
+	return ret;
+}
+
+int
+MAX127::collect()
+{
+	struct rel_angle_report report;
 	int ret;
+	float si_units;
+
+	/*
+	 * Read all of the used channels of the MAX127 ADC
+	 */
+
+	for(int ch = 0 ; ch < MAX127_USED_CHANNELS ; ch++)
+	{
+	/*
+	 * measure phase
+	 */
 	uint8_t cmd;
 
 	/* Create the control-byte depend on input value and channel */
 	switch (MAX127_INPUT_RANGE)
 	{
-	case 0 : cmd = (0x80 | (get_max127_channel()<<4));	break; /* 0V - 5V */
-	case 1 : cmd = (0x88 | (get_max127_channel()<<4));	break; /* 0V - 10V */
-	case 2 : cmd = (0x84 | (get_max127_channel()<<4));	break; /* -5V - 5V */
-	case 3 : cmd = (0x8c | (get_max127_channel()<<4));	break; /* -10V - 10V */
-	default : cmd = (0x80 | (get_max127_channel()<<4));	break; /* 0 - 5V */
+	case 0 : cmd = (0x80 | (ch<<4));	break; /* 0V - 5V */
+	case 1 : cmd = (0x88 | (ch<<4));	break; /* 0V - 10V */
+	case 2 : cmd = (0x84 | (ch<<4));	break; /* -5V - 5V */
+	case 3 : cmd = (0x8c | (ch<<4));	break; /* -10V - 10V */
+	default : cmd = (0x80 | (ch<<4));	break; /* 0 - 5V */
 	}
 
 	/*
@@ -469,17 +520,12 @@ MAX127::measure()
 		log("i2c::transfer returned %d", ret);
 		return ret;
 	}
-	ret = OK;
 	
-	return ret;
-}
+	/*
+	 * collect phase
+	 */
+	ret = -EIO;
 
-int
-MAX127::collect()
-{
-	int	ret = -EIO;
-	int channel = get_max127_channel();
-	float si_units;
 	
 	/* read from the sensor */
 	uint8_t val[2] = {0, 0};
@@ -498,16 +544,20 @@ MAX127::collect()
 	
 	uint16_t value = val[0] << 8 | val[1]; /* Convert two data-bytes to one */
 	value = value >> 4; /* shift the value 4 bits to the left side because the last 4 bits of the second data-byte are zero*/
-	si_units = ((M_PI/(get_raw_at_pi(0)-get_raw_at_zero(0)))*value) - ((M_PI/(get_raw_at_pi(0)-get_raw_at_zero(0)))*get_raw_at_zero(0));
-	struct rel_angle_report report;
+	/*
+	 * Calculate an si-unit with the value from the adc.
+	 * In this case, it is a relative angle between a unmanned vehicle and a paraglider.
+	 * An offset adjustment is also included
+	 */
+	si_units = ((M_PI/(get_raw_at_pi(ch)-get_raw_at_zero(ch)))*value) - ((M_PI/(get_raw_at_pi(ch)-get_raw_at_zero(ch)))*get_raw_at_zero(ch));
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
-	report.timestamp[0] = hrt_absolute_time();
-    report.error_count[0] = perf_event_count(_comms_errors);
-    report.value[0] = value;
-	report.si_units[0] = si_units;
+	report.timestamp[ch] = hrt_absolute_time();
+    report.error_count[ch] = perf_event_count(_comms_errors);
+    report.value[ch] = value;
+	report.si_units[ch] = si_units;
+}
 
-	
 	/* publish it */
 	orb_publish(ORB_ID(vehicle_paraglider_angle), _rel_angle_topic, &report);
 
@@ -567,22 +617,22 @@ MAX127::cycle_trampoline(void *arg)
 void
 MAX127::cycle()
 {
-	/* measurement phase */
-	if (OK != measure())
-	{
-		log("measure error");
-		/* restart the measurement state machine */
-		start();
-		return;
-	}
-	else
-	{
-	/* next phase is collection */
-	_collect_phase = true;
-	}
+//	/* measurement phase */
+//	if (OK != measure())
+//	{
+//		log("measure error");
+//		/* restart the measurement state machine */
+//		start();
+//		return;
+//	}
+//	else
+//	{
+//	/* next phase is collection */
+//	_collect_phase = true;
+//	}
 
-	/* collection phase? */
-	if (_collect_phase) {
+//	/* collection phase? */
+//	if (_collect_phase) {
 
 		/* perform collection */
 		if (OK != collect()) {
@@ -592,10 +642,10 @@ MAX127::cycle()
 			return;
 		}
 
-		/* next phase is measurement */
-		_collect_phase = false;
-
-	}
+//		/* next phase is measurement */
+//		_collect_phase = false;
+//
+//	}
 
 	/* schedule a fresh cycle call when the cycle is done */
 	work_queue(HPWORK,
@@ -717,21 +767,23 @@ test()
 	if (sz != sizeof(report))
 		err(1, "immediate read failed");
 
+
 	warnx("single read");
-	for(int ch=0 ; ch < MAX127_USED_CHANNELS ; ch++)
+	for(int ch = 0 ; ch < MAX127_USED_CHANNELS ; ch++)
 	{
 	warnx("channel %d",ch);
-	warnx("raw value: %u",report.value[ch]);
-	warnx("measurement: %0.4f m", (double)report.si_units[ch]);
+	warnx("raw value: 	%u",report.value[ch]);
+	warnx("measurement: %0.4f [rad]", (double)report.si_units[ch]);
 	warnx("time:        %lld", report.timestamp[ch]);
 	}
+
 
 	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2))
 		errx(1, "failed to set 2Hz poll rate");
 
-	/* read the sensor 5x and report each value */
-	for (unsigned i = 0; i < 5; i++) {
+	/* read the adc 3x and report each value */
+	for (unsigned i = 0; i < 3; i++) {
 		struct pollfd fds;
 
 		/* wait for data to be ready */
@@ -749,11 +801,11 @@ test()
 			err(1, "periodic read failed");
 
 		warnx("periodic read %u", i);
-		for(int ch=0 ; ch < MAX127_USED_CHANNELS ; ch++)
+		for(int ch = 0 ; ch < MAX127_USED_CHANNELS ; ch++)
 		{
 		warnx("channel %d",ch);
-		warnx("raw value: %u",report.value[ch]);
-		warnx("measurement: %0.4f m", (double)report.si_units[ch]);
+		warnx("raw value: 	%u",report.value[ch]);
+		warnx("measurement: %0.4f [rad]", (double)report.si_units[ch]);
 		warnx("time:        %lld", report.timestamp[ch]);
 		}
 	}
