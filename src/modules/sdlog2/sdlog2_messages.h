@@ -311,8 +311,16 @@ struct log_XGPO_s {
 	float vel_d;
 };
 
+/* --- RANG - RELATIVE ANGLE --- */
+#define LOG_RANG_MSG 25
+struct log_RANG_s {
+	uint64_t t;
+	float ang_l;
+	float ang_r;
+};
+
 /* --- FWRV - FIRMWARE REVISION --- */
-#define LOG_FWRV_MSG 25
+#define LOG_FWRV_MSG 26
 struct log_FWRV_s {
 	char    fw_revision[64];
 };
@@ -358,6 +366,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(XGPS, "QBffLLfffff", "GPSTime,FixType,EPH,EPV,Lat,Lon,Alt,VelN,VelE,VelD,Cog"),
 	LOG_FORMAT(XATT, "fff", "Roll,Pitch,Yaw"),
 	LOG_FORMAT(XGPO, "LLffff", "Lat,Lon,Alt,VelN,VelE,VelD"),
+	LOG_FORMAT(RANG, "Qff","Time,Ang_l,Ang_r"),
 	LOG_FORMAT(FWRV,"Z",FW_VERSION_STR),
 };
 

@@ -59,7 +59,7 @@
  * structure.
  */
 struct rel_angle_report {
-	uint64_t timestamp[MAX127_USED_CHANNELS];		/* Timestamp for each channel */
+	uint64_t timestamp;								/* Timestamp for each channel */
 	uint64_t error_count[MAX127_USED_CHANNELS];		/* Error_count for each channel */
 	uint16_t value[MAX127_USED_CHANNELS];			/* Raw Value for each channel */
 	float si_units[MAX127_USED_CHANNELS];			/* si_units for each channel */

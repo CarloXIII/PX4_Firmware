@@ -86,6 +86,7 @@
 #include <uORB/topics/xsens_vehicle_gps_position.h>
 #include <uORB/topics/xsens_vehicle_attitude.h>
 #include <uORB/topics/xsens_vehicle_global_position.h>
+#include <drivers/drv_rel_angle.h>
 
 #include <systemlib/systemlib.h>
 
@@ -635,6 +636,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct xsens_vehicle_gps_position_s xsens_gps_pos;
 		struct xsens_vehicle_attitude_s xsens_attitude;
 		struct xsens_vehicle_global_position_s xsens_global_pos;
+		struct rel_angle_report rel_angle;
 	} buf;
 	memset(&buf, 0, sizeof(buf));
 
@@ -663,6 +665,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		int xsens_gps_pos_sub;
 		int xsens_attitude_sub;
 		int xsens_global_pos_sub;
+		int rel_angle_sub;
 	} subs;
 
 	/* log message buffer: header + body */
@@ -694,6 +697,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			struct log_XGPS_s log_XGPS;
 			struct log_XATT_s log_XATT;
 			struct log_XGPO_s log_XGPO;
+			struct log_RANG_s log_RANG;
 		} body;
 	} log_msg = {
 		LOG_PACKET_HEADER_INIT(0)
@@ -703,7 +707,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 	/* --- IMPORTANT: DEFINE NUMBER OF ORB STRUCTS TO WAIT FOR HERE --- */
 	/* number of messages */
-	const ssize_t fdsc = 24;
+	const ssize_t fdsc = 25;
 	/* Sanity check variable and index */
 	ssize_t fdsc_count = 0;
 	/* file descriptors to wait for */
@@ -851,6 +855,12 @@ int sdlog2_thread_main(int argc, char *argv[])
 	/* --- XSENS GLOBAL POSITION --- */
 	subs.xsens_global_pos_sub = orb_subscribe(ORB_ID(xsens_vehicle_global_position));
 	fds[fdsc_count].fd = subs.xsens_global_pos_sub;
+	fds[fdsc_count].events = POLLIN;
+	fdsc_count++;
+
+	/* --- RELATIVE ANGLE --- */
+	subs.rel_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+	fds[fdsc_count].fd = subs.rel_angle_sub;
 	fds[fdsc_count].events = POLLIN;
 	fdsc_count++;
 
@@ -1326,6 +1336,16 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_XGPO.vel_e = buf.xsens_global_pos.vel_e_m_s;
 				log_msg.body.log_XGPO.vel_d = buf.xsens_global_pos.vel_d_m_s;
 				LOGBUFFER_WRITE_AND_COUNT(XGPO);
+			}
+
+			/* --- RELATIVE ANGLE --- */
+			if (fds[ifds++].revents & POLLIN) {
+				orb_copy(ORB_ID(vehicle_paraglider_angle), subs.rel_angle_sub, &buf.rel_angle);
+				log_msg.msg_type = LOG_RANG_MSG;
+				log_msg.body.log_RANG.t = buf.rel_angle.timestamp;
+				log_msg.body.log_RANG.ang_l = buf.rel_angle.si_units[0];
+				log_msg.body.log_RANG.ang_r = buf.rel_angle.si_units[1];
+				LOGBUFFER_WRITE_AND_COUNT(RANG);
 			}
 
 			/* signal the other thread new data, but not yet unlock */

@@ -83,10 +83,10 @@
 
 /* Constants who are only relevant for the relative angle measurement between vehicle and paraglider */
 
-#define RAW_AT_ZERO_LEFT 1000.0		/* Defines the raw value where the angle should be zero for the left potentiometer */
-#define RAW_AT_ZERO_RIGHT 1000.0	/* Defines the raw value where the angle should be zero for the right potentiometer */
-#define RAW_AT_PI_LEFT 2500.0		/* Defines the raw value where the angle should be pi for the left potentiometer */
-#define RAW_AT_PI_RIGHT 2500.0		/* Defines the raw value where the angle should be pi for the right potentiometer */
+#define RAW_AT_ZERO_LEFT 1930		/* Defines the raw value where the angle should be zero for the left potentiometer */
+#define RAW_AT_ZERO_RIGHT 1845		/* Defines the raw value where the angle should be zero for the right potentiometer */
+#define RAW_AT_PI_2_LEFT 3262		/* Defines the raw value where the angle should be pi/2 (90°) for the left potentiometer */
+#define RAW_AT_PI_2_RIGHT 3216		/* Defines the raw value where the angle should be pi/2 (90°) for the right potentiometer */
 
 
 /* oddly, ERROR is not defined for c++ */
@@ -123,7 +123,7 @@ protected:
 
 private:
 	int					_raw_at_zero[MAX127_USED_CHANNELS]; 	/* The raw value where the angle should be zero for the specific channel */
-	int					_raw_at_pi[MAX127_USED_CHANNELS];		/* The raw value where the angle should be pi for the specific channel */
+	int					_raw_at_pi_2[MAX127_USED_CHANNELS];		/* The raw value where the angle should be pi/2 for the specific channel */
 	work_s				_work;
 	RingBuffer		*_reports;
 	bool				_sensor_ok;
@@ -159,14 +159,14 @@ private:
 	void				stop();
 	
 	/**
-	 * Set the raw values where the angle should be zero and pi. This is used to detect the offset
+	 * Set the raw values where the angle should be zero and pi/2. This is used to detect the offset
 	 * and calculate the si_units. Otherwise it will use the defaults values
 	 */
 	void set_raw_at_zero(int channel,int raw);
-	void set_raw_at_pi(int channel,int raw);
+	void set_raw_at_pi_2(int channel,int raw);
 
 	int get_raw_at_zero(int channel);
-	int get_raw_at_pi(int channel);
+	int get_raw_at_pi_2(int channel);
 
 	/**
 	* Perform a poll cycle; collect from the previous measurement
@@ -207,8 +207,8 @@ MAX127::MAX127(int bus, int address) :
 	_debug_enabled = true;
 	_raw_at_zero[0] = RAW_AT_ZERO_LEFT;
 	_raw_at_zero[1] = RAW_AT_ZERO_RIGHT;
-	_raw_at_pi[0] = RAW_AT_PI_LEFT;
-	_raw_at_pi[1] = RAW_AT_PI_RIGHT;
+	_raw_at_pi_2[0] = RAW_AT_PI_2_LEFT;
+	_raw_at_pi_2[1] = RAW_AT_PI_2_RIGHT;
 	
 	// work_cancel in the dtor will explode if we don't do this...
 	memset(&_work, 0, sizeof(_work));
@@ -280,16 +280,16 @@ void MAX127::set_raw_at_zero(int ch,int raw) {
 	_raw_at_zero[ch] = raw;
 }
 
-void MAX127::set_raw_at_pi(int ch,int raw) {
-	_raw_at_pi[ch] = raw;
+void MAX127::set_raw_at_pi_2(int ch,int raw) {
+	_raw_at_pi_2[ch] = raw;
 }
 
 int MAX127::get_raw_at_zero(int ch) {
 	return _raw_at_zero[ch];
 }
 
-int MAX127::get_raw_at_pi(int ch) {
-	return _raw_at_pi[ch];
+int MAX127::get_raw_at_pi_2(int ch) {
+	return _raw_at_pi_2[ch];
 }
 
 
@@ -549,10 +549,10 @@ MAX127::collect()
 	 * In this case, it is a relative angle between a unmanned vehicle and a paraglider.
 	 * An offset adjustment is also included
 	 */
-	si_units = ((M_PI/(get_raw_at_pi(ch)-get_raw_at_zero(ch)))*value) - ((M_PI/(get_raw_at_pi(ch)-get_raw_at_zero(ch)))*get_raw_at_zero(ch));
+	si_units = ((M_PI_2/(get_raw_at_pi_2(ch)-get_raw_at_zero(ch)))*value) - ((M_PI_2/(get_raw_at_pi_2(ch)-get_raw_at_zero(ch)))*get_raw_at_zero(ch));
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
-	report.timestamp[ch] = hrt_absolute_time();
+	report.timestamp = hrt_absolute_time();
     report.error_count[ch] = perf_event_count(_comms_errors);
     report.value[ch] = value;
 	report.si_units[ch] = si_units;
@@ -774,7 +774,7 @@ test()
 	warnx("channel %d",ch);
 	warnx("raw value: 	%u",report.value[ch]);
 	warnx("measurement: %0.4f [rad]", (double)report.si_units[ch]);
-	warnx("time:        %lld", report.timestamp[ch]);
+	warnx("time:        %lld", report.timestamp);
 	}
 
 
@@ -806,7 +806,7 @@ test()
 		warnx("channel %d",ch);
 		warnx("raw value: 	%u",report.value[ch]);
 		warnx("measurement: %0.4f [rad]", (double)report.si_units[ch]);
-		warnx("time:        %lld", report.timestamp[ch]);
+		warnx("time:        %lld", report.timestamp);
 		}
 	}
 
