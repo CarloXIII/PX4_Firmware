@@ -349,9 +349,9 @@ XSENS_PARSER::handle_message()
 	_xsens_sensor_combined->accelerometer_m_s2[2] = xsens_calibrated->accz;
 	_xsens_sensor_combined->accelerometer_counter += 1;
 
-	_xsens_sensor_combined->gyro_rad_s[0] = xsens_calibrated->gyrx/2;	// XXX todo: chage normalized to gauss
-	_xsens_sensor_combined->gyro_rad_s[1] = xsens_calibrated->gyry/2; // XXX todo: chage normalized to gauss
-	_xsens_sensor_combined->gyro_rad_s[2] = xsens_calibrated->gyrz/2; // XXX todo: chage normalized to gauss (1gauss = 100*10^-6 Tesla) -> Erdmagnetfeld ca. 50uT=0.5gauss)
+	_xsens_sensor_combined->gyro_rad_s[0] = xsens_calibrated->gyrx/2;
+	_xsens_sensor_combined->gyro_rad_s[1] = xsens_calibrated->gyry/2;
+	_xsens_sensor_combined->gyro_rad_s[2] = xsens_calibrated->gyrz/2;
 	_xsens_sensor_combined->gyro_counter += 1;
 
 	_xsens_sensor_combined->magnetometer_ga[0] = xsens_calibrated->magx;
@@ -393,11 +393,19 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_yaw: %f", xsens_euler->yaw);
 	*/
 
+	_xsens_vehicle_attitude->timestamp = hrt_absolute_time();
+
 	_xsens_vehicle_attitude->roll = (xsens_euler->roll*2*M_PI)/360;
 	_xsens_vehicle_attitude->pitch = (xsens_euler->pitch*2*M_PI)/360;
 	_xsens_vehicle_attitude->yaw = (xsens_euler->yaw*2*M_PI)/360;
 
-	_xsens_vehicle_attitude->timestamp = hrt_absolute_time();
+	_xsens_vehicle_attitude->rollspeed = xsens_calibrated->gyrx/2;
+	_xsens_vehicle_attitude->pitchspeed = xsens_calibrated->gyry/2;
+	_xsens_vehicle_attitude->yawspeed = xsens_calibrated->gyrz/2;
+
+	_xsens_vehicle_attitude->rate_offsets[0] = 0.0f;
+	_xsens_vehicle_attitude->rate_offsets[1] = 0.0f;
+	_xsens_vehicle_attitude->rate_offsets[2] = 0.0f;
 
 	_rx_header_lgth += xsens_euler_lgth;
 #endif
@@ -444,11 +452,11 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_alt: %f", xsens_position->alt);
 	*/
 
-	_global_position->lat = xsens_position->lat * 1e7;
-	_global_position->lon = xsens_position->lon * 1e7;
-	_global_position->alt = xsens_position->alt * 1e3;
-	_global_position->timestamp_position = hrt_absolute_time();
-	_global_position->fix_type = 3;
+	_global_position->lat = xsens_position->lat * 1.0e7;
+	_global_position->lon = xsens_position->lon * 1.0e7;
+	_global_position->alt = xsens_position->alt;
+
+	_global_position->timestamp = hrt_absolute_time();
 
 	_rx_header_lgth += xsens_position_lgth;
 #endif
@@ -469,13 +477,12 @@ XSENS_PARSER::handle_message()
 	warnx("xsens_velz: %f", xsens_velocity->velz);
 	*/
 
-	_global_position->vel_n_m_s = xsens_velocity->velx;
-	_global_position->vel_e_m_s = xsens_velocity->vely;
-	_global_position->vel_d_m_s = xsens_velocity->velz;
-	_global_position->vel_m_s = sqrt(_global_position->vel_n_m_s * _global_position->vel_n_m_s + _global_position->vel_e_m_s * _global_position->vel_e_m_s);
-	_global_position->vel_ned_valid = true;
-	_global_position->timestamp_velocity = hrt_absolute_time();
-	_global_position->fix_type = 3;
+	_global_position->vx = xsens_velocity->velx;
+	_global_position->vy = xsens_velocity->vely;
+	_global_position->vz = xsens_velocity->velz;
+	_global_position->yaw = (xsens_euler->yaw*2*M_PI)/360;
+
+	_global_position->valid = true;
 
 	_global_position->timestamp = hrt_absolute_time();
 

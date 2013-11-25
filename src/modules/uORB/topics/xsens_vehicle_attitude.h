@@ -59,9 +59,20 @@
 struct xsens_vehicle_attitude_s {
 
 	uint64_t timestamp;	/**< in microseconds since system start */
-	float roll;			/**< Roll angle (rad, Tait-Bryan, NED) */
-	float pitch;		/**< Pitch angle (rad, Tait-Bryan, NED) */
-	float yaw;			/**< Yaw angle (rad, Tait-Bryan, NED) */
+	float roll;			/**< Roll angle (rad, Tait-Bryan, NED)				*/
+	float pitch;		/**< Pitch angle (rad, Tait-Bryan, NED)				*/
+	float yaw;			/**< Yaw angle (rad, Tait-Bryan, NED)				*/
+	float rollspeed;	/**< Roll angular speed (rad/s, Tait-Bryan, NED)		*/
+	float pitchspeed;	/**< Pitch angular speed (rad/s, Tait-Bryan, NED)		*/
+	float yawspeed;		/**< Yaw angular speed (rad/s, Tait-Bryan, NED)			*/
+	float rollacc;		/**< Roll angular accelration (rad/s, Tait-Bryan, NED)		*/
+	float pitchacc;		/**< Pitch angular acceleration (rad/s, Tait-Bryan, NED)	*/
+	float yawacc;		/**< Yaw angular acceleration (rad/s, Tait-Bryan, NED)		*/
+	float rate_offsets[3];	/**< Offsets of the body angular rates from zero		*/
+	float R[3][3];		/**< Rotation matrix body to world, (Tait-Bryan, NED)		*/
+	float q[4];			/**< Quaternion (NED)						*/
+	bool R_valid;		/**< Rotation matrix valid					*/
+	bool q_valid;		/**< Quaternion valid						*/
 };
 
 /**

@@ -958,6 +958,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				// Don't orb_copy, it's already done few lines above
 				log_msg.msg_type = LOG_STAT_MSG;
+				log_msg.body.log_STAT.t = buf_status.timestamp;
 				log_msg.body.log_STAT.main_state = (uint8_t) buf_status.main_state;
 				log_msg.body.log_STAT.navigation_state = (uint8_t) buf_status.navigation_state;
 				log_msg.body.log_STAT.arming_state = (uint8_t) buf_status.arming_state;
@@ -977,9 +978,11 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_GPS.fix_type = buf.gps_pos.fix_type;
 				log_msg.body.log_GPS.eph = buf.gps_pos.eph_m;
 				log_msg.body.log_GPS.epv = buf.gps_pos.epv_m;
+				log_msg.body.log_GPS.t_p = buf.gps_pos.timestamp_position;
 				log_msg.body.log_GPS.lat = buf.gps_pos.lat;
 				log_msg.body.log_GPS.lon = buf.gps_pos.lon;
 				log_msg.body.log_GPS.alt = buf.gps_pos.alt * 0.001f;
+				log_msg.body.log_GPS.t_v = buf.gps_pos.timestamp_velocity;
 				log_msg.body.log_GPS.vel_n = buf.gps_pos.vel_n_m_s;
 				log_msg.body.log_GPS.vel_e = buf.gps_pos.vel_e_m_s;
 				log_msg.body.log_GPS.vel_d = buf.gps_pos.vel_d_m_s;
@@ -1020,6 +1023,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 				if (write_IMU) {
 					log_msg.msg_type = LOG_IMU_MSG;
+					log_msg.body.log_IMU.t		= buf.sensor.timestamp;
 					log_msg.body.log_IMU.gyro_x = buf.sensor.gyro_rad_s[0];
 					log_msg.body.log_IMU.gyro_y = buf.sensor.gyro_rad_s[1];
 					log_msg.body.log_IMU.gyro_z = buf.sensor.gyro_rad_s[2];
@@ -1046,6 +1050,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(vehicle_attitude), subs.att_sub, &buf.att);
 				log_msg.msg_type = LOG_ATT_MSG;
+				log_msg.body.log_ATT.t = buf.att.timestamp;
 				log_msg.body.log_ATT.roll = buf.att.roll;
 				log_msg.body.log_ATT.pitch = buf.att.pitch;
 				log_msg.body.log_ATT.yaw = buf.att.yaw;
@@ -1059,6 +1064,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(vehicle_attitude_setpoint), subs.att_sp_sub, &buf.att_sp);
 				log_msg.msg_type = LOG_ATSP_MSG;
+				log_msg.body.log_ATSP.t = buf.att_sp.timestamp;
 				log_msg.body.log_ATSP.roll_sp = buf.att_sp.roll_body;
 				log_msg.body.log_ATSP.pitch_sp = buf.att_sp.pitch_body;
 				log_msg.body.log_ATSP.yaw_sp = buf.att_sp.yaw_body;
@@ -1070,6 +1076,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(vehicle_rates_setpoint), subs.rates_sp_sub, &buf.rates_sp);
 				log_msg.msg_type = LOG_ARSP_MSG;
+				log_msg.body.log_ARSP.t = buf.rates_sp.timestamp;
 				log_msg.body.log_ARSP.roll_rate_sp = buf.rates_sp.roll;
 				log_msg.body.log_ARSP.pitch_rate_sp = buf.rates_sp.pitch;
 				log_msg.body.log_ARSP.yaw_rate_sp = buf.rates_sp.yaw;
@@ -1080,6 +1087,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(actuator_outputs_0), subs.act_outputs_sub, &buf.act_outputs);
 				log_msg.msg_type = LOG_OUT0_MSG;
+				log_msg.body.log_OUT0.t = buf.act_outputs.timestamp;
 				memcpy(log_msg.body.log_OUT0.output, buf.act_outputs.output, sizeof(log_msg.body.log_OUT0.output));
 				LOGBUFFER_WRITE_AND_COUNT(OUT0);
 			}
@@ -1088,6 +1096,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, subs.act_controls_sub, &buf.act_controls);
 				log_msg.msg_type = LOG_ATTC_MSG;
+				log_msg.body.log_ATTC.t = buf.act_controls.timestamp;
 				log_msg.body.log_ATTC.roll = buf.act_controls.control[0];
 				log_msg.body.log_ATTC.pitch = buf.act_controls.control[1];
 				log_msg.body.log_ATTC.yaw = buf.act_controls.control[2];
@@ -1105,6 +1114,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(vehicle_local_position), subs.local_pos_sub, &buf.local_pos);
 				log_msg.msg_type = LOG_LPOS_MSG;
+				log_msg.body.log_LPOS.t = buf.local_pos.timestamp;
 				log_msg.body.log_LPOS.x = buf.local_pos.x;
 				log_msg.body.log_LPOS.y = buf.local_pos.y;
 				log_msg.body.log_LPOS.z = buf.local_pos.z;
@@ -1135,6 +1145,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(vehicle_global_position), subs.global_pos_sub, &buf.global_pos);
 				log_msg.msg_type = LOG_GPOS_MSG;
+				log_msg.body.log_GPOS.t = buf.global_pos.timestamp;
 				log_msg.body.log_GPOS.lat = buf.global_pos.lat;
 				log_msg.body.log_GPOS.lon = buf.global_pos.lon;
 				log_msg.body.log_GPOS.alt = buf.global_pos.alt;
@@ -1173,6 +1184,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(optical_flow), subs.flow_sub, &buf.flow);
 				log_msg.msg_type = LOG_FLOW_MSG;
+				log_msg.body.log_FLOW.t = buf.flow.timestamp;
 				log_msg.body.log_FLOW.flow_raw_x = buf.flow.flow_raw_x;
 				log_msg.body.log_FLOW.flow_raw_y = buf.flow.flow_raw_y;
 				log_msg.body.log_FLOW.flow_comp_x = buf.flow.flow_comp_x_m;
@@ -1187,6 +1199,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(rc_channels), subs.rc_sub, &buf.rc);
 				log_msg.msg_type = LOG_RC_MSG;
+				log_msg.body.log_RC.t = buf.rc.timestamp;
 				/*Copy only the first 8 channels of 14 */
 				memcpy(log_msg.body.log_RC.channel, buf.rc.chan, sizeof(log_msg.body.log_RC.channel));
 				LOGBUFFER_WRITE_AND_COUNT(RC);
@@ -1196,6 +1209,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(airspeed), subs.airspeed_sub, &buf.airspeed);
 				log_msg.msg_type = LOG_AIRS_MSG;
+				log_msg.body.log_AIRS.t = buf.airspeed.timestamp;
 				log_msg.body.log_AIRS.indicated_airspeed = buf.airspeed.indicated_airspeed_m_s;
 				log_msg.body.log_AIRS.true_airspeed = buf.airspeed.true_airspeed_m_s;
 				LOGBUFFER_WRITE_AND_COUNT(AIRS);
@@ -1207,6 +1221,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 				for (uint8_t i=0; i<buf.esc.esc_count; i++)
 				{
 					log_msg.msg_type = LOG_ESC_MSG;
+					log_msg.body.log_ESC.t = buf.esc.timestamp;
 					log_msg.body.log_ESC.counter = buf.esc.counter;
 					log_msg.body.log_ESC.esc_count = buf.esc.esc_count;
 					log_msg.body.log_ESC.esc_connectiontype = buf.esc.esc_connectiontype;
@@ -1268,6 +1283,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 				if (write_XIMU) {
 					log_msg.msg_type = LOG_XIMU_MSG;
+					log_msg.body.log_XIMU.t = buf.xsens_sensor.timestamp;
 					log_msg.body.log_XIMU.gyro_x = buf.xsens_sensor.gyro_rad_s[0];
 					log_msg.body.log_XIMU.gyro_y = buf.xsens_sensor.gyro_rad_s[1];
 					log_msg.body.log_XIMU.gyro_z = buf.xsens_sensor.gyro_rad_s[2];
@@ -1304,9 +1320,11 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_XGPS.fix_type = buf.xsens_gps_pos.fix_type;
 				log_msg.body.log_XGPS.eph = buf.xsens_gps_pos.eph_m;
 				log_msg.body.log_XGPS.epv = buf.xsens_gps_pos.epv_m;
+				log_msg.body.log_XGPS.t_p = buf.xsens_gps_pos.timestamp_position;
 				log_msg.body.log_XGPS.lat = buf.xsens_gps_pos.lat;
 				log_msg.body.log_XGPS.lon = buf.xsens_gps_pos.lon;
 				log_msg.body.log_XGPS.alt = buf.xsens_gps_pos.alt * 0.001f;
+				log_msg.body.log_XGPS.t_v = buf.xsens_gps_pos.timestamp_velocity;
 				log_msg.body.log_XGPS.vel_n = buf.xsens_gps_pos.vel_n_m_s;
 				log_msg.body.log_XGPS.vel_e = buf.xsens_gps_pos.vel_e_m_s;
 				log_msg.body.log_XGPS.vel_d = buf.xsens_gps_pos.vel_d_m_s;
@@ -1318,9 +1336,13 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (fds[ifds++].revents & POLLIN) {
 				orb_copy(ORB_ID(xsens_vehicle_attitude), subs.xsens_attitude_sub, &buf.xsens_attitude);
 				log_msg.msg_type = LOG_XATT_MSG;
+				log_msg.body.log_XATT.t = buf.xsens_attitude.timestamp;
 				log_msg.body.log_XATT.roll = buf.xsens_attitude.roll;
 				log_msg.body.log_XATT.pitch = buf.xsens_attitude.pitch;
 				log_msg.body.log_XATT.yaw = buf.xsens_attitude.yaw;
+				log_msg.body.log_XATT.roll_rate = buf.xsens_attitude.rollspeed;
+				log_msg.body.log_XATT.pitch_rate = buf.xsens_attitude.pitchspeed;
+				log_msg.body.log_XATT.yaw_rate = buf.xsens_attitude.yawspeed;
 				LOGBUFFER_WRITE_AND_COUNT(XATT);
 			}
 
@@ -1329,12 +1351,13 @@ int sdlog2_thread_main(int argc, char *argv[])
 				orb_copy(ORB_ID(xsens_vehicle_global_position), subs.xsens_global_pos_sub,
 						&buf.xsens_global_pos);
 				log_msg.msg_type = LOG_XGPO_MSG;
+				log_msg.body.log_XGPO.t = buf.xsens_global_pos.timestamp;
 				log_msg.body.log_XGPO.lat = buf.xsens_global_pos.lat;
 				log_msg.body.log_XGPO.lon = buf.xsens_global_pos.lon;
-				log_msg.body.log_XGPO.alt = buf.xsens_global_pos.alt * 0.001f;
-				log_msg.body.log_XGPO.vel_n = buf.xsens_global_pos.vel_n_m_s;
-				log_msg.body.log_XGPO.vel_e = buf.xsens_global_pos.vel_e_m_s;
-				log_msg.body.log_XGPO.vel_d = buf.xsens_global_pos.vel_d_m_s;
+				log_msg.body.log_XGPO.alt = buf.xsens_global_pos.alt;
+				log_msg.body.log_XGPO.vel_n = buf.xsens_global_pos.vx;
+				log_msg.body.log_XGPO.vel_e = buf.xsens_global_pos.vy;
+				log_msg.body.log_XGPO.vel_d = buf.xsens_global_pos.vz;
 				LOGBUFFER_WRITE_AND_COUNT(XGPO);
 			}
 

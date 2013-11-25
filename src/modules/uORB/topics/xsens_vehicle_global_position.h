@@ -61,20 +61,18 @@
  */
 struct xsens_vehicle_global_position_s
 {
-	uint64_t timestamp;		/**< time of this estimate, in microseconds since system start */
+	uint64_t timestamp;			/**< time of this estimate, in microseconds since system start */
+	uint64_t time_gps_usec; 	/**< GPS timestamp in microseconds							   */
+	bool valid;					/**< true if position satisfies validity criteria of estimator */
 
-	uint64_t timestamp_position;			/**< Timestamp for position information */
 	int32_t lat;			/**< Latitude in 1E7 degrees							 	   */
 	int32_t lon;			/**< Longitude in 1E7 degrees							 	   */
-	int32_t alt;			/**< Altitude in 1E3 meters (millimeters) above MSL  */
-	uint8_t fix_type; 	    /**< 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix.   */
-
-	uint64_t timestamp_velocity;	/**< Timestamp for velocity informations */
-	float vel_m_s;					/**< GPS ground speed (m/s) */
-	float vel_n_m_s;				/**< GPS ground speed in m/s */
-	float vel_e_m_s;				/**< GPS ground speed in m/s */
-	float vel_d_m_s;				/**< GPS ground speed in m/s */
-	bool vel_ned_valid;				/**< Flag to indicate if NED speed is valid */
+	float alt;				/**< Altitude in meters									 	   */
+	float relative_alt;		/**< Altitude above home position in meters, 				   */
+	float vx; 				/**< Ground X velocity, m/s in NED				 			   */
+	float vy;				/**< Ground Y velocity, m/s in NED							   */
+	float vz;				/**< Ground Z velocity, m/s	in NED 							   */
+	float yaw; 				/**< Compass heading in radians -PI..+PI.					   */
 };
 
 /**
