@@ -73,11 +73,11 @@
 
 /* Configuration Constants */
 #define MB12XX_BUS 			PX4_I2C_BUS_EXPANSION
-#define MB12XX_BASEADDR 	0x20 /* 7-bit address. 8-bit address is 0xE0 	-> 0x20 = 0b010 0000
+#define MB12XX_BASEADDR 	0x70 /* 7-bit address. 8-bit address is 0xE0 */
 
 /* MB12xx Registers addresses */
 
-#define MB12XX_TAKE_RANGE_REG	0x70		/* Measure range Register, use all channels */
+#define MB12XX_TAKE_RANGE_REG	0x51		/* Measure range Register */
 #define MB12XX_SET_ADDRESS_1	0xAA		/* Change address 1 Register */
 #define MB12XX_SET_ADDRESS_2	0xA5		/* Change address 2 Register */
 
@@ -470,11 +470,11 @@ MB12XX::collect()
 	int	ret = -EIO;
 	
 	/* read from the sensor */
-	uint8_t val[16];
+	uint8_t val[2] = {0, 0};
 	
 	perf_begin(_sample_perf);
-	uint8_t cmd = MB12XX_TAKE_RANGE_REG;
-	ret = transfer(&cmd, 1, &val[0], 16);
+	
+	ret = transfer(nullptr, 0, &val[0], 2);
 	
 	if (ret < 0)
 	{
@@ -483,34 +483,16 @@ MB12XX::collect()
 		perf_end(_sample_perf);
 		return ret;
 	}
-
+	
+	uint16_t distance = val[0] << 8 | val[1];
+	float si_units = (distance * 1.0f)/ 100.0f; /* cm to m */
 	struct range_finder_report report;
+
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
         report.error_count = perf_event_count(_comms_errors);
-
-	report.vin1 = ((((0x0F) & val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
-	report.vin2 = ((((0x0F) & val[2]) << 8) | val[3]);
-	report.vin3 = ((((0x0F) & val[4]) << 8) | val[5]);
-	report.vin4 = ((((0x0F) & val[6]) << 8) | val[7]);
-	report.vin5 = ((((0x0F) & val[8]) << 8) | val[9]);
-	report.vin6 = ((((0x0F) & val[10]) << 8) | val[11]);
-	report.vin7 = ((((0x0F) & val[12]) << 8) | val[13]);
-	report.vin8 = ((((0x0F) & val[14]) << 8) | val[15]);
-	
-
-
-	// Check
-	uint8_t cmdxx = {0x02};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111000
-	transfer(&cmdxx, 1, nullptr, 0);
-
-	uint8_t readback [2] = {0,0};
-	transfer(nullptr, 0, &readback[0], 2);
-	report.valid = readback[0] << 8 | readback[1];
-
-
-	//report.valid = si_units > get_minimum_distance() && si_units < get_maximum_distance() ? 1 : 0;
+	report.distance = si_units;
+	report.valid = si_units > get_minimum_distance() && si_units < get_maximum_distance() ? 1 : 0;
 	
 	/* publish it */
 	orb_publish(ORB_ID(sensor_range_finder), _range_finder_topic, &report);
@@ -534,31 +516,6 @@ MB12XX::start()
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_reports->flush();
-
-
-	// Set the Configuration Register and activate the channels to be converted
-	int ret;
-
-	uint8_t cmd [3] = {0x02, 0x0F, 0xF8};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111000
-	ret = transfer(&cmd[0], 3, nullptr, 0);
-
-	if (OK != ret)
-	{
-		perf_count(_comms_errors);
-		log("i2c::transfer returned %d", ret);
-	}
-
-
-	// Check
-	uint8_t readback [2] = {0,0};
-	ret = transfer(nullptr, 0, &readback[0], 2);
-	if (readback[1] != cmd[2] || readback[0] != cmd[1]){
-		log("Readback from Configuration Register is not the same: \t%d\n", readback[0] << 8 | readback[1]);
-	}
-
-
-
 
 	/* schedule a cycle to start things */
 	work_queue(HPWORK, &_work, (worker_t)&MB12XX::cycle_trampoline, this, 1);
@@ -753,21 +710,18 @@ test()
 		err(1, "immediate read failed");
 
 	warnx("single read");
-	warnx("measurement: %0.2f m", (double)report.vin1);
+	warnx("measurement: %0.2f m", (double)report.distance);
 	warnx("time:        %lld", report.timestamp);
 
-
-/*
-
-	// start the sensor polling at 2Hz
+	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2))
 		errx(1, "failed to set 2Hz poll rate");
 
-	// read the sensor 5x and report each value
-	for (unsigned i = 0; i < 50; i++) {
+	/* read the sensor 5x and report each value */
+	for (unsigned i = 0; i < 5; i++) {
 		struct pollfd fds;
 
-		// wait for data to be ready
+		/* wait for data to be ready */
 		fds.fd = fd;
 		fds.events = POLLIN;
 		ret = poll(&fds, 1, 2000);
@@ -775,7 +729,7 @@ test()
 		if (ret != 1)
 			errx(1, "timed out waiting for sensor data");
 
-		// now go get it
+		/* now go get it */
 		sz = read(fd, &report, sizeof(report));
 
 		if (sz != sizeof(report))
@@ -787,8 +741,6 @@ test()
 	}
 
 	errx(0, "PASS");
-
-*/
 }
 
 /**
