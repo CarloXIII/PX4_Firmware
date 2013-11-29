@@ -71,8 +71,8 @@ int px4_simple_app_main(int argc, char *argv[])
 	};
 
 	int error_counter = 0;
-
-	while (true) {
+	int i;
+	for (i = 0; i<10; i++) {
 		/* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
 		int poll_ret = poll(fds, 1, 1000);
 	 
@@ -96,14 +96,14 @@ int px4_simple_app_main(int argc, char *argv[])
 				/* copy sensors raw data into local buffer */
 				orb_copy(ORB_ID(sensor_current_sensor), sensor_sub_fd, &raw);
 				printf("[px4_simple_app] Timestamp:\t%d\n", (double)raw.timestamp);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin1 >>12, (0x0FFF) & raw.vin1);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin2 >>12, (0x0FFF) & raw.vin2);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin3 >>12, (0x0FFF) & raw.vin3);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin4 >>12, (0x0FFF) & raw.vin4);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin5 >>12, (0x0FFF) & raw.vin5);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin6 >>12, (0x0FFF) & raw.vin6);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin7 >>12, (0x0FFF) & raw.vin7);
-				printf("[px4_simple_app] Current %d:\t%d\n", raw.vin8 >>12, (0x0FFF) & raw.vin8);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin1 >>12), (0x0FFF) & raw.vin1);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin2 >>12), (0x0FFF) & raw.vin2);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin3 >>12), (0x0FFF) & raw.vin3);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin4 >>12), (0x0FFF) & raw.vin4);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin5 >>12), (0x0FFF) & raw.vin5);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin6 >>12), (0x0FFF) & raw.vin6);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin7 >>12), (0x0FFF) & raw.vin7);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin8 >>12), (0x0FFF) & raw.vin8);
 
 				printf("[px4_simple_app] CONFIGURATION REGISTER :\t%d\n", raw.valid);
 

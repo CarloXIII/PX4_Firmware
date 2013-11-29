@@ -42,9 +42,46 @@
 
 #include <board_config.h>
 
+
+
+/* Device limits */
+#define MB12XX_MIN_DISTANCE (0.20f)
+#define MB12XX_MAX_DISTANCE (7.65f)
+
+#define MB12XX_CONVERSION_INTERVAL 5 // 5us
+
+
+/* AD7998 Addresses */
+#define PIOS_AD7998_0_I2C_ADDR                  0x21
+#define PIOS_AD7998_1_I2C_ADDR                  0x23
+#define PIOS_AD7998_CONV_REG                    0x00
+#define PIOS_AD7998_ALERT_STAT                  0x01
+#define PIOS_AD7998_CONF_REG                    0x02
+#define PIOS_AD7998_CYCLE_TIM_REG               0x03
+#define PIOS_AD7998_DATAL_CH_START              0x04 //each next channel +0x03
+#define PIOS_AD7998_DATAH_CH_START              0x05 //each next channel +0x03
+#define PIOS_AD7998_DATA_HYS_START              0x06 //each next channel +0x03
+
+#define PIOS_AD7998_CONF_POLARITY        (1 << 0)
+#define PIOS_AD7998_CONF_BUSY_ALERT      (1 << 1)
+#define PIOS_AD7998_CONF_ALERT_EN        (1 << 2)
+#define PIOS_AD7998_CONF_FLTR            (1 << 3)
+#define PIOS_AD7998_CONF_CH0             (1 << 4)
+#define PIOS_AD7998_CONF_CH1             (1 << 5)
+#define PIOS_AD7998_CONF_CH2             (1 << 6)
+#define PIOS_AD7998_CONF_CH3             (1 << 7)
+#define PIOS_AD7998_CONF_CH4             (1 << 8)
+#define PIOS_AD7998_CONF_CH5             (1 << 9)
+#define PIOS_AD7998_CONF_CH6             (1 << 10)
+#define PIOS_AD7998_CONF_CH7             (1 << 11)
+#define PIOS_AD7998_CONF_CH_ALL          (PIOS_AD7998_CONF_CH0 | PIOS_AD7998_CONF_CH1 \
+                                       | PIOS_AD7998_CONF_CH2 | PIOS_AD7998_CONF_CH3 \
+                                       | PIOS_AD7998_CONF_CH4 | PIOS_AD7998_CONF_CH5 \
+                                       | PIOS_AD7998_CONF_CH6 | PIOS_AD7998_CONF_CH7)
+
 /* Configuration Constants */
 #define MB12XX_BUS 			PX4_I2C_BUS_EXPANSION
-#define MB12XX_BASEADDR 	0x20 /* 7-bit address. 8-bit address is 0xE0 	-> 0x20 = 0b010 0000
+#define MB12XX_BASEADDR 	0x20 /* 7-bit address. 8-bit address is 0xE0 	-> 0x20 = 0b010 0000, AS pin foating
 
 /* MB12xx Registers addresses */
 
@@ -52,11 +89,20 @@
 #define MB12XX_SET_ADDRESS_1	0xAA		/* Change address 1 Register */
 #define MB12XX_SET_ADDRESS_2	0xA5		/* Change address 2 Register */
 
-/* Device limits */
-#define MB12XX_MIN_DISTANCE (0.20f)
-#define MB12XX_MAX_DISTANCE (7.65f)
+#define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
+#define BYTETOBINARY(byte)  \
+  (byte & 0x80 ? 1 : 0), \
+  (byte & 0x40 ? 1 : 0), \
+  (byte & 0x20 ? 1 : 0), \
+  (byte & 0x10 ? 1 : 0), \
+  (byte & 0x08 ? 1 : 0), \
+  (byte & 0x04 ? 1 : 0), \
+  (byte & 0x02 ? 1 : 0), \
+  (byte & 0x01 ? 1 : 0)
 
-#define MB12XX_CONVERSION_INTERVAL 60000 /* 60ms */
+//printf("M: "BYTETOBINARYPATTERN" "BYTETOBINARYPATTERN"\n",
+// BYTETOBINARY(M>>8), BYTETOBINARY(M));
+//printf ("Leading text "BYTETOBINARYPATTERN, BYTETOBINARY(byte));
 
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
@@ -158,7 +204,7 @@ private:
 extern "C" __EXPORT int current_sensor_main(int argc, char *argv[]);
 
 MB12XX::MB12XX(int bus, int address) :
-	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 100000),
+	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 400000),
 	_min_distance(MB12XX_MIN_DISTANCE),
 	_max_distance(MB12XX_MAX_DISTANCE),
 	_reports(nullptr),
@@ -419,10 +465,11 @@ MB12XX::measure()
 	int ret;
 
 	/*
-	 * Send the command to begin a measurement.
+	 * Send the command to start a measurement.
 	 */
 	uint8_t cmd = MB12XX_TAKE_RANGE_REG;
-	ret = transfer(&cmd, 1, nullptr, 0);
+	//ret = transfer(&cmd, 1, nullptr, 0);
+	ret = OK;
 
 	if (OK != ret)
 	{
@@ -443,9 +490,50 @@ MB12XX::collect()
 	/* read from the sensor */
 	uint8_t val[16];
 
+
+
 	perf_begin(_sample_perf);
-	uint8_t cmd = MB12XX_TAKE_RANGE_REG;
-	ret = transfer(&cmd, 1, &val[0], 16);
+
+	uint8_t cmd = 0x80;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[0], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0x90;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[2], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xA0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[4], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xB0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[6], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xC0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[8], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xD0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[10], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xE0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[12], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xF0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[14], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
 
 	if (ret < 0)
 	{
@@ -469,34 +557,33 @@ MB12XX::collect()
 	report.vin7 = ((((0x0F) & val[12]) << 8) | val[13]);
 	report.vin8 = ((((0x0F) & val[14]) << 8) | val[15]);*/
 
-	report.vin1 = (((val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
-	report.vin2 = (((val[2]) << 8) | val[3]);
-	report.vin3 = (((val[4]) << 8) | val[5]);
-	report.vin4 = (((val[6]) << 8) | val[7]);
-	report.vin5 = (((val[8]) << 8) | val[9]);
-	report.vin6 = (((val[10]) << 8) | val[11]);
-	report.vin7 = (((val[12]) << 8) | val[13]);
-	report.vin8 = (((val[14]) << 8) | val[15]);
+	report.vin1 = ((((uint16_t)(val[0])) << 8) | (uint16_t)val[1]);	//Datasheet AD7998 p.20
+	report.vin2 = ((((uint16_t)(val[2])) << 8) | (uint16_t)val[3]);
+	report.vin3 = ((((uint16_t)(val[4])) << 8) | (uint16_t)val[5]);
+	report.vin4 = ((((uint16_t)(val[6])) << 8) | (uint16_t)val[7]);
+	report.vin5 = ((((uint16_t)(val[8])) << 8) | (uint16_t)val[9]);
+	report.vin6 = ((((uint16_t)(val[10])) << 8) | (uint16_t)val[11]);
+	report.vin7 = ((((uint16_t)(val[12])) << 8) | (uint16_t)val[13]);
+	report.vin8 = ((((uint16_t)(val[14])) << 8) | (uint16_t)val[15]);
 
 
 
 	// Set the Configuration Register and activate the channels to be converted
-	uint8_t cmdxxxxx [3] = {0x02, 0x0F, 0xFD};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	uint8_t cmdxxxxx [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x0ff)};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
 												//Configreg: 0bxxxx111111111101
-	ret = transfer(&cmdxxxxx[0], 3, nullptr, 0);
+	//ret = transfer(&cmdxxxxx[0], 3, nullptr, 0);
 
 
 
 
 	// Check
-	uint8_t cmdxx = {0x02};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111000
+	uint8_t cmdxx = {PIOS_AD7998_CONF_REG};
 	transfer(&cmdxx, 1, nullptr, 0);
-
+	usleep(MB12XX_CONVERSION_INTERVAL);
 	uint8_t readback [2] = {0,0};
 	transfer(nullptr, 0, &readback[0], 2);
 	report.valid = readback[0] << 8 | readback[1];
-
+	usleep(MB12XX_CONVERSION_INTERVAL);
 
 	//report.valid = si_units > get_minimum_distance() && si_units < get_maximum_distance() ? 1 : 0;
 
@@ -527,10 +614,11 @@ MB12XX::start()
 	// Set the Configuration Register and activate the channels to be converted
 	int ret;
 
-	uint8_t cmd [3] = {0x02, 0x0F, 0xFD};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111101
+	int i;
+	uint8_t cmd [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x0ff)};		//Configreg: 0bxxxx111111111101
+	for(i=0; i<5;i++){
 	ret = transfer(&cmd[0], 3, nullptr, 0);
-
+	usleep(MB12XX_CONVERSION_INTERVAL);
 	if (OK != ret)
 	{
 		perf_count(_comms_errors);
@@ -539,13 +627,15 @@ MB12XX::start()
 
 
 	// Check
+	usleep(MB12XX_CONVERSION_INTERVAL);
 	uint8_t readback [2] = {0,0};
 	ret = transfer(nullptr, 0, &readback[0], 2);
 	if (readback[1] != cmd[2] || readback[0] != cmd[1]){
-		log("Readback from Configuration Register is not the same: \t%d\n", readback[0] << 8 | readback[1]);
+		log("Readback from Configuration Register is not the same: \t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(readback[0]),BYTETOBINARY(readback[1]));
+
 	}
 
-
+	}
 
 
 	/* schedule a cycle to start things */
@@ -631,11 +721,58 @@ MB12XX::cycle()
 void
 MB12XX::print_info()
 {
+	int	ret = -EIO;
+	/*
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	_reports->print_info("report queue");
+	*/
+
+	// Set the Configuration Register and activate the channels to be converted
+	uint8_t cmdxxxzz [3] = {PIOS_AD7998_DATAH_CH_START , 0xF0, 0xF0};		//Data_high Register CH1
+	ret = transfer(&cmdxxxzz[0], 3, nullptr, 0);
+
+	uint8_t cmdxxxxx [3] = {PIOS_AD7998_DATAL_CH_START, 0xF0, 0xF0};		//Data_low Register CH1
+	ret = transfer(&cmdxxxxx[0], 3, nullptr, 0);
+
+	uint8_t cmdxxxyy [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x00FF)};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	ret = transfer(&cmdxxxyy[0], 3, nullptr, 0);
+
+	// Register auslesen
+
+	uint8_t val[2];
+	uint8_t cmd = PIOS_AD7998_CONF_REG;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nConfiguration Register:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+	cmd = PIOS_AD7998_DATAL_CH_START;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nData_low Register CH1:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+	cmd = PIOS_AD7998_DATAH_CH_START;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nData_high Register CH1:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+
+
+/*
+
+	uint8_t cmdxxxyyc [3] = {PIOS_AD7998_CONF_REG, 0xFF, 0xFF};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	ret = transfer(&cmdxxxyyc[0], 3, nullptr, 0);
+
+	cmd = PIOS_AD7998_CONF_REG;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nConfiguration Register:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+
+	uint8_t cmdxxxyyv [3] = {PIOS_AD7998_CONF_REG, 0x00, 0x00};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	ret = transfer(&cmdxxxyyv[0], 3, nullptr, 0);
+
+	cmd = PIOS_AD7998_CONF_REG;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nConfiguration Register:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+
+*/
+
+	printf ("\n");
 }
 
 /**
