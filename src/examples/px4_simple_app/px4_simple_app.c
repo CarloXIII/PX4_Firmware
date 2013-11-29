@@ -44,6 +44,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_combined.h>
+#include <drivers/drv_current_sensor.h>
 #include <uORB/topics/vehicle_attitude.h>
 
 __EXPORT int px4_simple_app_main(int argc, char *argv[]);
@@ -53,7 +54,7 @@ int px4_simple_app_main(int argc, char *argv[])
 	printf("Hello Sky!\n");
 
 	/* subscribe to sensor_combined topic */
-	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_combined));
+	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_current_sensor));
 	orb_set_interval(sensor_sub_fd, 1000);
 
 	/* advertise attitude topic */
@@ -70,8 +71,8 @@ int px4_simple_app_main(int argc, char *argv[])
 	};
 
 	int error_counter = 0;
-
-	for (int i = 0; i < 5; i++) {
+	int i;
+	for (i = 0; i<10; i++) {
 		/* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
 		int poll_ret = poll(fds, 1, 1000);
 	 
@@ -91,19 +92,26 @@ int px4_simple_app_main(int argc, char *argv[])
 	 
 			if (fds[0].revents & POLLIN) {
 				/* obtained data for the first file descriptor */
-				struct sensor_combined_s raw;
+				struct current_sensor_report raw;
 				/* copy sensors raw data into local buffer */
-				orb_copy(ORB_ID(sensor_combined), sensor_sub_fd, &raw);
-				printf("[px4_simple_app] Accelerometer:\t%8.4f\t%8.4f\t%8.4f\n",
-					(double)raw.accelerometer_m_s2[0],
-					(double)raw.accelerometer_m_s2[1],
-					(double)raw.accelerometer_m_s2[2]);
+				orb_copy(ORB_ID(sensor_current_sensor), sensor_sub_fd, &raw);
+				printf("[px4_simple_app] Timestamp:\t%d\n", (double)raw.timestamp);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin1 >>12), (0x0FFF) & raw.vin1);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin2 >>12), (0x0FFF) & raw.vin2);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin3 >>12), (0x0FFF) & raw.vin3);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin4 >>12), (0x0FFF) & raw.vin4);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin5 >>12), (0x0FFF) & raw.vin5);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin6 >>12), (0x0FFF) & raw.vin6);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin7 >>12), (0x0FFF) & raw.vin7);
+				printf("[px4_simple_app] Current %d:\t%d\n", (0x0007) & (raw.vin8 >>12), (0x0FFF) & raw.vin8);
 
-				/* set att and publish this information for other apps */
+				printf("[px4_simple_app] CONFIGURATION REGISTER :\t%d\n", raw.valid);
+
+				/* set att and publish this information for other apps
 				att.roll = raw.accelerometer_m_s2[0];
 				att.pitch = raw.accelerometer_m_s2[1];
 				att.yaw = raw.accelerometer_m_s2[2];
-				orb_publish(ORB_ID(vehicle_attitude), att_pub, &att);
+				orb_publish(ORB_ID(vehicle_attitude), att_pub, &att);	*/
 			}
 			/* there could be more file descriptors here, in the form like:
 			 * if (fds[1..n].revents & POLLIN) {}

@@ -1,43 +1,14 @@
-/****************************************************************************
- *
- *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
-
 /**
- * @file mb12xx.cpp
- * @author Greg Hulands
+ * @file current_sensor.cpp
+ * @author Benedikt Imbach
+
  *
- * Driver for the Maxbotix sonar range finders connected via I2C.
+ *Current sensor driver based on the FHS 40-PSP600 current sensor
+ *in combination with the ADC AD7997 with I2C interface
+
  */
-	 
+
+
 #include <nuttx/config.h>
 
 #include <drivers/device/i2c.h>
@@ -63,7 +34,7 @@
 #include <systemlib/err.h>
 
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_range_finder.h>
+#include <drivers/drv_current_sensor.h>
 #include <drivers/device/ringbuffer.h>
 
 #include <uORB/uORB.h>
@@ -71,9 +42,46 @@
 
 #include <board_config.h>
 
+
+
+/* Device limits */
+#define MB12XX_MIN_DISTANCE (0.20f)
+#define MB12XX_MAX_DISTANCE (7.65f)
+
+#define MB12XX_CONVERSION_INTERVAL 5 // 5us
+
+
+/* AD7998 Addresses */
+#define PIOS_AD7998_0_I2C_ADDR                  0x21
+#define PIOS_AD7998_1_I2C_ADDR                  0x23
+#define PIOS_AD7998_CONV_REG                    0x00
+#define PIOS_AD7998_ALERT_STAT                  0x01
+#define PIOS_AD7998_CONF_REG                    0x02
+#define PIOS_AD7998_CYCLE_TIM_REG               0x03
+#define PIOS_AD7998_DATAL_CH_START              0x04 //each next channel +0x03
+#define PIOS_AD7998_DATAH_CH_START              0x05 //each next channel +0x03
+#define PIOS_AD7998_DATA_HYS_START              0x06 //each next channel +0x03
+
+#define PIOS_AD7998_CONF_POLARITY        (1 << 0)
+#define PIOS_AD7998_CONF_BUSY_ALERT      (1 << 1)
+#define PIOS_AD7998_CONF_ALERT_EN        (1 << 2)
+#define PIOS_AD7998_CONF_FLTR            (1 << 3)
+#define PIOS_AD7998_CONF_CH0             (1 << 4)
+#define PIOS_AD7998_CONF_CH1             (1 << 5)
+#define PIOS_AD7998_CONF_CH2             (1 << 6)
+#define PIOS_AD7998_CONF_CH3             (1 << 7)
+#define PIOS_AD7998_CONF_CH4             (1 << 8)
+#define PIOS_AD7998_CONF_CH5             (1 << 9)
+#define PIOS_AD7998_CONF_CH6             (1 << 10)
+#define PIOS_AD7998_CONF_CH7             (1 << 11)
+#define PIOS_AD7998_CONF_CH_ALL          (PIOS_AD7998_CONF_CH0 | PIOS_AD7998_CONF_CH1 \
+                                       | PIOS_AD7998_CONF_CH2 | PIOS_AD7998_CONF_CH3 \
+                                       | PIOS_AD7998_CONF_CH4 | PIOS_AD7998_CONF_CH5 \
+                                       | PIOS_AD7998_CONF_CH6 | PIOS_AD7998_CONF_CH7)
+
 /* Configuration Constants */
 #define MB12XX_BUS 			PX4_I2C_BUS_EXPANSION
-#define MB12XX_BASEADDR 	0x20 /* 7-bit address. 8-bit address is 0xE0 	-> 0x20 = 0b010 0000
+#define MB12XX_BASEADDR 	0x20 /* 7-bit address. 8-bit address is 0xE0 	-> 0x20 = 0b010 0000, AS pin foating
 
 /* MB12xx Registers addresses */
 
@@ -81,11 +89,20 @@
 #define MB12XX_SET_ADDRESS_1	0xAA		/* Change address 1 Register */
 #define MB12XX_SET_ADDRESS_2	0xA5		/* Change address 2 Register */
 
-/* Device limits */
-#define MB12XX_MIN_DISTANCE (0.20f)
-#define MB12XX_MAX_DISTANCE (7.65f)
-	 
-#define MB12XX_CONVERSION_INTERVAL 60000 /* 60ms */
+#define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
+#define BYTETOBINARY(byte)  \
+  (byte & 0x80 ? 1 : 0), \
+  (byte & 0x40 ? 1 : 0), \
+  (byte & 0x20 ? 1 : 0), \
+  (byte & 0x10 ? 1 : 0), \
+  (byte & 0x08 ? 1 : 0), \
+  (byte & 0x04 ? 1 : 0), \
+  (byte & 0x02 ? 1 : 0), \
+  (byte & 0x01 ? 1 : 0)
+
+//printf("M: "BYTETOBINARYPATTERN" "BYTETOBINARYPATTERN"\n",
+// BYTETOBINARY(M>>8), BYTETOBINARY(M));
+//printf ("Leading text "BYTETOBINARYPATTERN, BYTETOBINARY(byte));
 
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
@@ -102,17 +119,17 @@ class MB12XX : public device::I2C
 public:
 	MB12XX(int bus = MB12XX_BUS, int address = MB12XX_BASEADDR);
 	virtual ~MB12XX();
-	
+
 	virtual int 		init();
-	
+
 	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
 	virtual int			ioctl(struct file *filp, int cmd, unsigned long arg);
-	
+
 	/**
 	* Diagnostics - print some basic information about the driver.
 	*/
 	void				print_info();
-	
+
 protected:
 	virtual int			probe();
 
@@ -124,13 +141,13 @@ private:
 	bool				_sensor_ok;
 	int					_measure_ticks;
 	bool				_collect_phase;
-	
+
 	orb_advert_t		_range_finder_topic;
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
 	perf_counter_t		_buffer_overflows;
-	
+
 	/**
 	* Test whether the device supported by the driver is present at a
 	* specific address.
@@ -139,7 +156,7 @@ private:
 	* @return		True if the device is present.
 	*/
 	int					probe_address(uint8_t address);
-	
+
 	/**
 	* Initialise the automatic measurement state machine and start it.
 	*
@@ -147,12 +164,12 @@ private:
 	*       to make it more aggressive about resetting the bus in case of errors.
 	*/
 	void				start();
-	
+
 	/**
 	* Stop the automatic measurement state machine.
 	*/
 	void				stop();
-	
+
 	/**
 	* Set the min and max distance thresholds if you want the end points of the sensors
 	* range to be brought in at all, otherwise it will use the defaults MB12XX_MIN_DISTANCE
@@ -162,7 +179,7 @@ private:
 	void				set_maximum_distance(float max);
 	float				get_minimum_distance();
 	float				get_maximum_distance();
-	
+
 	/**
 	* Perform a poll cycle; collect from the previous measurement
 	* and start a new one.
@@ -177,17 +194,17 @@ private:
 	* @param arg		Instance pointer for the driver that is polling.
 	*/
 	static void		cycle_trampoline(void *arg);
-	
-	
+
+
 };
 
 /*
  * Driver 'main' command.
  */
-extern "C" __EXPORT int mb12xx_main(int argc, char *argv[]);
+extern "C" __EXPORT int current_sensor_main(int argc, char *argv[]);
 
 MB12XX::MB12XX(int bus, int address) :
-	I2C("MB12xx", RANGE_FINDER_DEVICE_PATH, bus, address, 100000),
+	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 400000),
 	_min_distance(MB12XX_MIN_DISTANCE),
 	_max_distance(MB12XX_MAX_DISTANCE),
 	_reports(nullptr),
@@ -195,13 +212,13 @@ MB12XX::MB12XX(int bus, int address) :
 	_measure_ticks(0),
 	_collect_phase(false),
 	_range_finder_topic(-1),
-	_sample_perf(perf_alloc(PC_ELAPSED, "mb12xx_read")),
-	_comms_errors(perf_alloc(PC_COUNT, "mb12xx_comms_errors")),
-	_buffer_overflows(perf_alloc(PC_COUNT, "mb12xx_buffer_overflows"))
+	_sample_perf(perf_alloc(PC_ELAPSED, "current_sensor_read")),
+	_comms_errors(perf_alloc(PC_COUNT, "current_sensor_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "current_sensor_buffer_overflows"))
 {
 	// enable debug() calls
 	_debug_enabled = true;
-	
+
 	// work_cancel in the dtor will explode if we don't do this...
 	memset(&_work, 0, sizeof(_work));
 }
@@ -226,18 +243,18 @@ MB12XX::init()
 		goto out;
 
 	/* allocate basic report buffers */
-	_reports = new RingBuffer(2, sizeof(range_finder_report));
+	_reports = new RingBuffer(2, sizeof(current_sensor_report));
 
 	if (_reports == nullptr)
 		goto out;
 
 	/* get a publish handle on the range finder topic */
-	struct range_finder_report zero_report;
+	struct current_sensor_report zero_report;
 	memset(&zero_report, 0, sizeof(zero_report));
-	_range_finder_topic = orb_advertise(ORB_ID(sensor_range_finder), &zero_report);
+	_range_finder_topic = orb_advertise(ORB_ID(sensor_current_sensor), &zero_report);
 
 	if (_range_finder_topic < 0)
-		debug("failed to create sensor_range_finder object. Did you start uOrb?");
+		debug("failed to create sensor_current_sensor object. Did you start uOrb?");
 
 	ret = OK;
 	/* sensor is ok, but we don't really know if it is within range */
@@ -256,13 +273,13 @@ void
 MB12XX::set_minimum_distance(float min)
 {
 	_min_distance = min;
-}	
+}
 
 void
 MB12XX::set_maximum_distance(float max)
 {
 	_max_distance = max;
-}	
+}
 
 float
 MB12XX::get_minimum_distance()
@@ -347,24 +364,24 @@ MB12XX::ioctl(struct file *filp, int cmd, unsigned long arg)
 		/* lower bound is mandatory, upper bound is a sanity check */
 		if ((arg < 1) || (arg > 100))
 			return -EINVAL;
-		
+
 		irqstate_t flags = irqsave();
 		if (!_reports->resize(arg)) {
 			irqrestore(flags);
 			return -ENOMEM;
 		}
 		irqrestore(flags);
-		
+
 		return OK;
 	}
 
 	case SENSORIOCGQUEUEDEPTH:
 		return _reports->size();
-		
+
 	case SENSORIOCRESET:
 		/* XXX implement this */
 		return -EINVAL;
-	
+
 	case RANGEFINDERIOCSETMINIUMDISTANCE:
 	{
 		set_minimum_distance(*(float *)arg);
@@ -386,8 +403,8 @@ MB12XX::ioctl(struct file *filp, int cmd, unsigned long arg)
 ssize_t
 MB12XX::read(struct file *filp, char *buffer, size_t buflen)
 {
-	unsigned count = buflen / sizeof(struct range_finder_report);
-	struct range_finder_report *rbuf = reinterpret_cast<struct range_finder_report *>(buffer);
+	unsigned count = buflen / sizeof(struct current_sensor_report);
+	struct current_sensor_report *rbuf = reinterpret_cast<struct current_sensor_report *>(buffer);
 	int ret = 0;
 
 	/* buffer must be large enough */
@@ -448,10 +465,11 @@ MB12XX::measure()
 	int ret;
 
 	/*
-	 * Send the command to begin a measurement.
+	 * Send the command to start a measurement.
 	 */
 	uint8_t cmd = MB12XX_TAKE_RANGE_REG;
-	ret = transfer(&cmd, 1, nullptr, 0);
+	//ret = transfer(&cmd, 1, nullptr, 0);
+	ret = OK;
 
 	if (OK != ret)
 	{
@@ -460,7 +478,7 @@ MB12XX::measure()
 		return ret;
 	}
 	ret = OK;
-	
+
 	return ret;
 }
 
@@ -468,14 +486,55 @@ int
 MB12XX::collect()
 {
 	int	ret = -EIO;
-	
+
 	/* read from the sensor */
 	uint8_t val[16];
-	
+
+
+
 	perf_begin(_sample_perf);
-	uint8_t cmd = MB12XX_TAKE_RANGE_REG;
-	ret = transfer(&cmd, 1, &val[0], 16);
-	
+
+	uint8_t cmd = 0x80;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[0], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0x90;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[2], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xA0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[4], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xB0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[6], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xC0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[8], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xD0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[10], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xE0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[12], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	cmd = 0xF0;
+	ret = transfer(&cmd, 1, nullptr, 0);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+	ret = transfer(nullptr, 0, &val[14], 2);
+	usleep(MB12XX_CONVERSION_INTERVAL);
+
 	if (ret < 0)
 	{
 		log("error reading from sensor: %d", ret);
@@ -484,36 +543,52 @@ MB12XX::collect()
 		return ret;
 	}
 
-	struct range_finder_report report;
+	struct current_sensor_report report;
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
         report.error_count = perf_event_count(_comms_errors);
 
-	report.vin1 = ((((0x0F) & val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
+	/*report.vin1 = ((((0x0F) & val[0]) << 8) | val[1]);	//Datasheet AD7998 p.20
 	report.vin2 = ((((0x0F) & val[2]) << 8) | val[3]);
 	report.vin3 = ((((0x0F) & val[4]) << 8) | val[5]);
 	report.vin4 = ((((0x0F) & val[6]) << 8) | val[7]);
 	report.vin5 = ((((0x0F) & val[8]) << 8) | val[9]);
 	report.vin6 = ((((0x0F) & val[10]) << 8) | val[11]);
 	report.vin7 = ((((0x0F) & val[12]) << 8) | val[13]);
-	report.vin8 = ((((0x0F) & val[14]) << 8) | val[15]);
-	
+	report.vin8 = ((((0x0F) & val[14]) << 8) | val[15]);*/
+
+	report.vin1 = ((((uint16_t)(val[0])) << 8) | (uint16_t)val[1]);	//Datasheet AD7998 p.20
+	report.vin2 = ((((uint16_t)(val[2])) << 8) | (uint16_t)val[3]);
+	report.vin3 = ((((uint16_t)(val[4])) << 8) | (uint16_t)val[5]);
+	report.vin4 = ((((uint16_t)(val[6])) << 8) | (uint16_t)val[7]);
+	report.vin5 = ((((uint16_t)(val[8])) << 8) | (uint16_t)val[9]);
+	report.vin6 = ((((uint16_t)(val[10])) << 8) | (uint16_t)val[11]);
+	report.vin7 = ((((uint16_t)(val[12])) << 8) | (uint16_t)val[13]);
+	report.vin8 = ((((uint16_t)(val[14])) << 8) | (uint16_t)val[15]);
+
+
+
+	// Set the Configuration Register and activate the channels to be converted
+	uint8_t cmdxxxxx [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x0ff)};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+												//Configreg: 0bxxxx111111111101
+	//ret = transfer(&cmdxxxxx[0], 3, nullptr, 0);
+
+
 
 
 	// Check
-	uint8_t cmdxx = {0x02};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111000
+	uint8_t cmdxx = {PIOS_AD7998_CONF_REG};
 	transfer(&cmdxx, 1, nullptr, 0);
-
+	usleep(MB12XX_CONVERSION_INTERVAL);
 	uint8_t readback [2] = {0,0};
 	transfer(nullptr, 0, &readback[0], 2);
 	report.valid = readback[0] << 8 | readback[1];
-
+	usleep(MB12XX_CONVERSION_INTERVAL);
 
 	//report.valid = si_units > get_minimum_distance() && si_units < get_maximum_distance() ? 1 : 0;
-	
+
 	/* publish it */
-	orb_publish(ORB_ID(sensor_range_finder), _range_finder_topic, &report);
+	orb_publish(ORB_ID(sensor_current_sensor), _range_finder_topic, &report);
 
 	if (_reports->force(&report)) {
 		perf_count(_buffer_overflows);
@@ -539,10 +614,11 @@ MB12XX::start()
 	// Set the Configuration Register and activate the channels to be converted
 	int ret;
 
-	uint8_t cmd [3] = {0x02, 0x0F, 0xF8};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
-												//Configreg: 0bxxxx111111111000
+	int i;
+	uint8_t cmd [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x0ff)};		//Configreg: 0bxxxx111111111101
+	for(i=0; i<5;i++){
 	ret = transfer(&cmd[0], 3, nullptr, 0);
-
+	usleep(MB12XX_CONVERSION_INTERVAL);
 	if (OK != ret)
 	{
 		perf_count(_comms_errors);
@@ -551,18 +627,20 @@ MB12XX::start()
 
 
 	// Check
+	usleep(MB12XX_CONVERSION_INTERVAL);
 	uint8_t readback [2] = {0,0};
 	ret = transfer(nullptr, 0, &readback[0], 2);
 	if (readback[1] != cmd[2] || readback[0] != cmd[1]){
-		log("Readback from Configuration Register is not the same: \t%d\n", readback[0] << 8 | readback[1]);
+		log("Readback from Configuration Register is not the same: \t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(readback[0]),BYTETOBINARY(readback[1]));
+
 	}
 
-
+	}
 
 
 	/* schedule a cycle to start things */
 	work_queue(HPWORK, &_work, (worker_t)&MB12XX::cycle_trampoline, this, 1);
-	
+
 	/* notify about state change */
 	struct subsystem_info_s info = {
 		true,
@@ -643,17 +721,64 @@ MB12XX::cycle()
 void
 MB12XX::print_info()
 {
+	int	ret = -EIO;
+	/*
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	_reports->print_info("report queue");
+	*/
+
+	// Set the Configuration Register and activate the channels to be converted
+	uint8_t cmdxxxzz [3] = {PIOS_AD7998_DATAH_CH_START , 0xF0, 0xF0};		//Data_high Register CH1
+	ret = transfer(&cmdxxxzz[0], 3, nullptr, 0);
+
+	uint8_t cmdxxxxx [3] = {PIOS_AD7998_DATAL_CH_START, 0xF0, 0xF0};		//Data_low Register CH1
+	ret = transfer(&cmdxxxxx[0], 3, nullptr, 0);
+
+	uint8_t cmdxxxyy [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x00FF)};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	ret = transfer(&cmdxxxyy[0], 3, nullptr, 0);
+
+	// Register auslesen
+
+	uint8_t val[2];
+	uint8_t cmd = PIOS_AD7998_CONF_REG;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nConfiguration Register:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+	cmd = PIOS_AD7998_DATAL_CH_START;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nData_low Register CH1:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+	cmd = PIOS_AD7998_DATAH_CH_START;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nData_high Register CH1:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+
+
+/*
+
+	uint8_t cmdxxxyyc [3] = {PIOS_AD7998_CONF_REG, 0xFF, 0xFF};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	ret = transfer(&cmdxxxyyc[0], 3, nullptr, 0);
+
+	cmd = PIOS_AD7998_CONF_REG;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nConfiguration Register:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+
+	uint8_t cmdxxxyyv [3] = {PIOS_AD7998_CONF_REG, 0x00, 0x00};		//Configreg:  -> 0h0, 0b0010 -> 0h2,    ergibt 0h02
+	ret = transfer(&cmdxxxyyv[0], 3, nullptr, 0);
+
+	cmd = PIOS_AD7998_CONF_REG;
+	ret = transfer(&cmd, 1, &val[0], 2);
+	printf ("\nConfiguration Register:\t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(val[0]),BYTETOBINARY(val[1]));
+
+*/
+
+	printf ("\n");
 }
 
 /**
  * Local functions in support of the shell command.
  */
-namespace mb12xx
+namespace current_sensor
 {
 
 /* oddly, ERROR is not defined for c++ */
@@ -691,7 +816,7 @@ start()
 		goto fail;
 
 	/* set the poll rate to default, starts automatic data collection */
-	fd = open(RANGE_FINDER_DEVICE_PATH, O_RDONLY);
+	fd = open(CURRENT_SENSOR_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0)
 		goto fail;
@@ -703,7 +828,7 @@ start()
 
 fail:
 
-	if (g_dev != nullptr) 
+	if (g_dev != nullptr)
 	{
 		delete g_dev;
 		g_dev = nullptr;
@@ -737,14 +862,14 @@ void stop()
 void
 test()
 {
-	struct range_finder_report report;
+	struct current_sensor_report report;
 	ssize_t sz;
 	int ret;
 
-	int fd = open(RANGE_FINDER_DEVICE_PATH, O_RDONLY);
+	int fd = open(CURRENT_SENSOR_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0)
-		err(1, "%s open failed (try 'mb12xx start' if the driver is not running", RANGE_FINDER_DEVICE_PATH);
+		err(1, "%s open failed (try 'current_sensor start' if the driver is not running", CURRENT_SENSOR_DEVICE_PATH);
 
 	/* do a simple demand read */
 	sz = read(fd, &report, sizeof(report));
@@ -797,7 +922,7 @@ test()
 void
 reset()
 {
-	int fd = open(RANGE_FINDER_DEVICE_PATH, O_RDONLY);
+	int fd = open(CURRENT_SENSOR_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0)
 		err(1, "failed ");
@@ -829,37 +954,37 @@ info()
 } // namespace
 
 int
-mb12xx_main(int argc, char *argv[])
+current_sensor_main(int argc, char *argv[])
 {
 	/*
 	 * Start/load the driver.
 	 */
 	if (!strcmp(argv[1], "start"))
-		mb12xx::start();
-	
+		current_sensor::start();
+
 	 /*
 	  * Stop the driver
 	  */
 	 if (!strcmp(argv[1], "stop"))
-		 mb12xx::stop();
+		 current_sensor::stop();
 
 	/*
 	 * Test the driver/device.
 	 */
 	if (!strcmp(argv[1], "test"))
-		mb12xx::test();
+		current_sensor::test();
 
 	/*
 	 * Reset the driver.
 	 */
 	if (!strcmp(argv[1], "reset"))
-		mb12xx::reset();
+		current_sensor::reset();
 
 	/*
 	 * Print driver information.
 	 */
 	if (!strcmp(argv[1], "info") || !strcmp(argv[1], "status"))
-		mb12xx::info();
+		current_sensor::info();
 
 	errx(1, "unrecognized command, try 'start', 'test', 'reset' or 'info'");
 }

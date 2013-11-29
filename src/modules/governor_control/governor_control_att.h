@@ -1,6 +1,8 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Author: @author Thomas Gubler <thomasgubler@student.ethz.ch>
+ *
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,59 +33,19 @@
  *
  ****************************************************************************/
 
-/**
- * @file Rangefinder driver interface.
- */
+/* @file Fixed Wing Attitude Control */
 
-#ifndef _DRV_RANGEFINDER_H
-#define _DRV_RANGEFINDER_H
+#ifndef FIXEDWING_ATT_CONTROL_ATT_H_
+#define FIXEDWING_ATT_CONTROL_ATT_H_
 
-#include <stdint.h>
-#include <sys/ioctl.h>
+#include <uORB/topics/vehicle_rates_setpoint.h>
+#include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_global_position.h>
 
-#include "drv_sensor.h"
-#include "drv_orb_dev.h"
+int fixedwing_att_control_attitude(const struct vehicle_attitude_setpoint_s *att_sp,
+				   const struct vehicle_attitude_s *att,
+				   const float speed_body[],
+				   struct vehicle_rates_setpoint_s *rates_sp);
 
-#define RANGE_FINDER_DEVICE_PATH	"/dev/range_finder"
-
-/**
- * range finder report structure.  Reads from the device must be in multiples of this
- * structure.
- */
-struct range_finder_report {
-	uint64_t timestamp;
-	uint64_t error_count;
-	uint16_t vin1; 			/** volts */
-	uint16_t vin2; 			/** volts */
-	uint16_t vin3; 			/** volts */
-	uint16_t vin4; 			/** volts */
-	uint16_t vin5; 			/** volts */
-	uint16_t vin6; 			/** volts */
-	uint16_t vin7; 			/** volts */
-	uint16_t vin8; 			/** volts */
-	uint16_t valid;				/** 1 == within sensor range, 0 = outside sensor range */
-};
-
-/*
- * ObjDev tag for raw range finder data.
- */
-ORB_DECLARE(sensor_range_finder);
-
-/*
- * ioctl() definitions
- *
- * Rangefinder drivers also implement the generic sensor driver
- * interfaces from drv_sensor.h
- */
-
-#define _RANGEFINDERIOCBASE			(0x7900)
-#define __RANGEFINDERIOC(_n)		(_IOC(_RANGEFINDERIOCBASE, _n))
-
-/** set the minimum effective distance of the device */
-#define RANGEFINDERIOCSETMINIUMDISTANCE	__RANGEFINDERIOC(1)
-
-/** set the maximum effective distance of the device */
-#define RANGEFINDERIOCSETMAXIUMDISTANCE	__RANGEFINDERIOC(2)
-
-
-#endif /* _DRV_RANGEFINDER_H */
+#endif /* FIXEDWING_ATT_CONTROL_ATT_H_ */

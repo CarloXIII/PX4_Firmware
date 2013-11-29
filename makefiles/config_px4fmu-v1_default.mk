@@ -39,6 +39,7 @@ MODULES		+= drivers/ets_airspeed
 MODULES		+= drivers/meas_airspeed
 MODULES		+= modules/sensors
 MODULES     += drivers/xsens
+MODULES		+= drivers/current_sensor
 
 #
 # System commands
@@ -124,7 +125,7 @@ MODULES		+= lib/conversion
 #MODULES		+= examples/math_demo
 # Tutorial code from
 # https://pixhawk.ethz.ch/px4/dev/hello_sky
-#MODULES		+= examples/px4_simple_app
+MODULES		+= examples/px4_simple_app
 
 # Tutorial code from
 # https://pixhawk.ethz.ch/px4/dev/daemon
