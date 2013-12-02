@@ -1,14 +1,15 @@
 #!nsh
 #
-# Standard startup script for PX4FMU onboard sensor drivers.
+# Standard startup script for PX4FMU onboard sensor drivers
+# and drivers who used for the paraglider
 #
 
 #
-# Start sensor drivers here.
+# Start sensor PX4FMU drivers here.
 #
 
 ms5611 start
-adc start
+# adc start
 
 # mag might be external
 if hmc5883 start
@@ -27,20 +28,20 @@ else
 	set BOARD fmuv2
 fi
 
-# Start airspeed sensors
-if meas_airspeed start
+#
+# Start Paraglider specific sensors here
+#
+
+# Start relative angle measurement
+if max127 start
 then
-	echo "using MEAS airspeed sensor"
-else
-	if ets_airspeed start
-	then
-		echo "using ETS airspeed sensor (bus 3)"
-	else
-		if ets_airspeed start -b 1
-		then
-			echo "Using ETS airspeed sensor (bus 1)"
-		fi
-	fi
+	echo "using relative angle measurement"
+fi
+
+# Start xsens driver
+if xsens start
+then
+	echo "using xsens"
 fi
 
 #
@@ -53,3 +54,4 @@ if sensors start
 then
 	preflight_check &
 fi
+

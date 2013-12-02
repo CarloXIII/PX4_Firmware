@@ -1,6 +1,9 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2008-2012 PX4 Development Team. All rights reserved.
+ *   Author: @author Thomas Gubler <thomasgubler@student.ethz.ch>
+ *           @author Julian Oes <joes@student.ethz.ch>
+ *           @author Lorenz Meier <lm@inf.ethz.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,32 +35,43 @@
  ****************************************************************************/
 
 /**
- * @file MAX127 driver interface.
- * The MAX127 IC is a analog to digital converter with a I2C interface
- * Relative angle between vehicle and paraglider
+ * @file vehicle_paraglider_angle.h
+ * Definition of the relative angle between vehicle and paraglider uORB topic.
  */
 
-#ifndef _DRV_REL_ANGLE_H
-#define _DRV_REL_ANGLE_H
+#ifndef VEHICLE_PARAGLIDER_ANGLE_H_
+#define VEHICLE_PARAGLIDER_ANGLE_H_
 
 #include <stdint.h>
-#include <sys/ioctl.h>
+#include <stdbool.h>
+#include "../uORB.h"
 
-#include "drv_sensor.h"
-#include "drv_orb_dev.h"
-
-
-#define REL_ANGLE_DEVICE_PATH	"/dev/rel_angle"
-
-/*
- * ObjDev tag for max127 data.
+/**
+ * Maximum number of used ADC Channels
  */
-ORB_DECLARE(rel_angle);
+#define MAX127_USED_CHANNELS	2
 
-/*
- * ioctl() definitions
+/**
+ * @addtogroup topics
+ * @{
  */
-#define _REL_ANGLEIOCBASE			(0x7900)
-#define _REL_ANGLEIOC(_n)		(_IOC(_REL_ANGLEIOCBASE, _n))
 
-#endif /* _DRV_REL_ANGLE_H */
+/**
+ * vehicle paraglider angle structure. Reads from the device must be in multiples of this
+ * structure.
+ */
+struct vehicle_paraglider_angle_s {
+	uint64_t timestamp;								/* Timestamp for each channel */
+	uint64_t error_count[MAX127_USED_CHANNELS];		/* Error_count for each channel */
+	uint16_t value[MAX127_USED_CHANNELS];			/* Raw Value for each channel */
+	float si_units[MAX127_USED_CHANNELS];			/* si_units for each channel */
+};
+
+/**
+ * @}
+ */
+
+/* register this as object request broker structure */
+ORB_DECLARE(vehicle_paraglider_angle);
+
+#endif

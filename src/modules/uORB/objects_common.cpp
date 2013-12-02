@@ -60,9 +60,6 @@ ORB_DEFINE(sensor_baro, struct baro_report);
 #include <drivers/drv_range_finder.h>
 ORB_DEFINE(sensor_range_finder, struct range_finder_report);
 
-#include <drivers/drv_rel_angle.h>
-ORB_DEFINE(vehicle_paraglider_angle, struct rel_angle_report);
-
 #include <drivers/drv_pwm_output.h>
 ORB_DEFINE(output_pwm, struct pwm_output_values);
 
@@ -110,6 +107,9 @@ ORB_DEFINE(xsens_vehicle_global_position, struct xsens_vehicle_global_position_s
 
 #include "topics/vehicle_local_position.h"
 ORB_DEFINE(vehicle_local_position, struct vehicle_local_position_s);
+
+#include "topics/vehicle_paraglider_angle.h"
+ORB_DEFINE(vehicle_paraglider_angle, struct vehicle_paraglider_angle_s);
 
 #include "topics/vehicle_vicon_position.h"
 ORB_DEFINE(vehicle_vicon_position, struct vehicle_vicon_position_s);

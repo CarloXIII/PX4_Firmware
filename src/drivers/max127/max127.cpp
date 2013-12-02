@@ -70,6 +70,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/subsystem_info.h>
+#include <uORB/topics/vehicle_paraglider_angle.h>
 
 #include <board_config.h>
 
@@ -234,13 +235,13 @@ MAX127::init()
 		goto out;
 
 	/* allocate basic report buffers */
-	_reports = new RingBuffer(2, sizeof(rel_angle_report));
+	_reports = new RingBuffer(2, sizeof(vehicle_paraglider_angle_s));
 
 	if (_reports == nullptr)
 		goto out;
 
 	/* get a publish handle on the rel angle topic */
-	struct rel_angle_report zero_report;
+	struct vehicle_paraglider_angle_s zero_report;
 	memset(&zero_report, 0, sizeof(zero_report));
 	_rel_angle_topic = orb_advertise(ORB_ID(vehicle_paraglider_angle), &zero_report);
 
@@ -391,8 +392,8 @@ MAX127::ioctl(struct file *filp, int cmd, unsigned long arg)
 ssize_t
 MAX127::read(struct file *filp, char *buffer, size_t buflen)
 {
-	unsigned count = buflen / sizeof(struct rel_angle_report);
-	struct rel_angle_report *rbuf = reinterpret_cast<struct rel_angle_report *>(buffer);
+	unsigned count = buflen / sizeof(struct vehicle_paraglider_angle_s);
+	struct vehicle_paraglider_angle_s *rbuf = reinterpret_cast<struct vehicle_paraglider_angle_s *>(buffer);
 	int ret = 0;
 
 	/* buffer must be large enough */
@@ -484,7 +485,7 @@ MAX127::measure()
 int
 MAX127::collect()
 {
-	struct rel_angle_report report;
+	struct vehicle_paraglider_angle_s report;
 	int ret;
 	float si_units;
 
@@ -752,7 +753,7 @@ void stop()
 void
 test()
 {
-	struct rel_angle_report report;
+	struct vehicle_paraglider_angle_s report;
 	ssize_t sz;
 	int ret;
 

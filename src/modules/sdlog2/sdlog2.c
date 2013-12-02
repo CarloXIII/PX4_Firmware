@@ -86,7 +86,7 @@
 #include <uORB/topics/xsens_vehicle_gps_position.h>
 #include <uORB/topics/xsens_vehicle_attitude.h>
 #include <uORB/topics/xsens_vehicle_global_position.h>
-#include <drivers/drv_rel_angle.h>
+#include <uORB/topics/vehicle_paraglider_angle.h>
 
 #include <systemlib/systemlib.h>
 
@@ -636,7 +636,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct xsens_vehicle_gps_position_s xsens_gps_pos;
 		struct xsens_vehicle_attitude_s xsens_attitude;
 		struct xsens_vehicle_global_position_s xsens_global_pos;
-		struct rel_angle_report rel_angle;
+		struct vehicle_paraglider_angle_s rel_angle;
 	} buf;
 	memset(&buf, 0, sizeof(buf));
 
