@@ -76,11 +76,11 @@
 
 /* Configuration Constants */
 #define MAX127_BUS 				PX4_I2C_BUS_EXPANSION	/* The I2C Bus where the max127 is wired */
-#define MAX127_BASEADDR 		0x28					/* 7-bit address. 8-bit address is 0x50 */
+#define MAX127_BASEADDR 		0x2A					/* 7-bit address. 0b0101010 */
 
 #define MAX127_INPUT_RANGE		0		/* Defines the input range (0=0-5V ; 1=0-10V ; 2=-5-5V ; 3=-10-10V) */
 
-#define MAX127_CONVERSION_INTERVAL 1000	/* Time until the IC has completed a conversion (it could be zero) 1ms*/
+#define MAX127_CONVERSION_INTERVAL 100	/* Time until the IC has completed a conversion (it could be zero) 0.1ms*/
 
 /* Constants who are only relevant for the relative angle measurement between vehicle and paraglider */
 
@@ -125,6 +125,8 @@ protected:
 private:
 	int					_raw_at_zero[MAX127_USED_CHANNELS]; 	/* The raw value where the angle should be zero for the specific channel */
 	int					_raw_at_pi_2[MAX127_USED_CHANNELS];		/* The raw value where the angle should be pi/2 for the specific channel */
+	float				_offset[MAX127_USED_CHANNELS];			/* The calculated offset for the specific channel */
+	float				_slope[MAX127_USED_CHANNELS];			/* The calculated slope of the straight line who representing the relationship between raw value and si unit */
 	work_s				_work;
 	RingBuffer		*_reports;
 	bool				_sensor_ok;
@@ -165,9 +167,13 @@ private:
 	 */
 	void set_raw_at_zero(int channel,int raw);
 	void set_raw_at_pi_2(int channel,int raw);
+	void set_offset(int channel,float value);
+	void set_slope(int channel,float value);
 
 	int get_raw_at_zero(int channel);
 	int get_raw_at_pi_2(int channel);
+	float get_offset(int channel);
+	float get_slope(int channel);
 
 	/**
 	* Perform a poll cycle; collect from the previous measurement
@@ -210,6 +216,10 @@ MAX127::MAX127(int bus, int address) :
 	_raw_at_zero[1] = RAW_AT_ZERO_RIGHT;
 	_raw_at_pi_2[0] = RAW_AT_PI_2_LEFT;
 	_raw_at_pi_2[1] = RAW_AT_PI_2_RIGHT;
+	_offset[0] = ((M_PI_2)/(RAW_AT_PI_2_LEFT-RAW_AT_ZERO_LEFT))*RAW_AT_ZERO_LEFT;
+	_offset[1] = ((M_PI_2)/(RAW_AT_PI_2_RIGHT-RAW_AT_ZERO_RIGHT))*RAW_AT_ZERO_RIGHT;
+	_slope[0] = (M_PI_2)/(RAW_AT_PI_2_LEFT-RAW_AT_ZERO_LEFT);
+	_slope[1] = (M_PI_2)/(RAW_AT_PI_2_RIGHT-RAW_AT_ZERO_RIGHT);
 	
 	// work_cancel in the dtor will explode if we don't do this...
 	memset(&_work, 0, sizeof(_work));
@@ -285,12 +295,28 @@ void MAX127::set_raw_at_pi_2(int ch,int raw) {
 	_raw_at_pi_2[ch] = raw;
 }
 
+void MAX127::set_offset(int ch,float value) {
+	_offset[ch] = value;
+}
+
+void MAX127::set_slope(int ch,float value) {
+	_slope[ch] = value;
+}
+
 int MAX127::get_raw_at_zero(int ch) {
 	return _raw_at_zero[ch];
 }
 
 int MAX127::get_raw_at_pi_2(int ch) {
 	return _raw_at_pi_2[ch];
+}
+
+float MAX127::get_offset(int ch) {
+	return _offset[ch];
+}
+
+float MAX127::get_slope(int ch) {
+	return _slope[ch];
 }
 
 
@@ -424,15 +450,6 @@ MAX127::read(struct file *filp, char *buffer, size_t buflen)
 
 		_reports->flush();
 
-//		/* trigger a measurement */
-//		if (OK != measure()) {
-//			ret = -EIO;
-//			break;
-//		}
-//
-//		/* wait for it to complete */
-//		usleep(MAX127_CONVERSION_INTERVAL);
-
 		/* run the collection phase */
 		if (OK != collect()) {
 			ret = -EIO;
@@ -452,31 +469,7 @@ MAX127::read(struct file *filp, char *buffer, size_t buflen)
 int
 MAX127::measure()
 {
-//	int ret;
-//	int ch = 0;
-//	uint8_t cmd;
-//
-//	/* Create the control-byte depend on input value and channel */
-//	switch (MAX127_INPUT_RANGE)
-//	{
-//	case 0 : cmd = (0x80 | (ch<<4));	break; /* 0V - 5V */
-//	case 1 : cmd = (0x88 | (ch<<4));	break; /* 0V - 10V */
-//	case 2 : cmd = (0x84 | (ch<<4));	break; /* -5V - 5V */
-//	case 3 : cmd = (0x8c | (ch<<4));	break; /* -10V - 10V */
-//	default : cmd = (0x80 | (ch<<4));	break; /* 0 - 5V */
-//	}
-//
-//	/*
-//	 * Send the command to begin a measurement.
-//	 */
-//	ret = transfer(&cmd, 1, nullptr, 0);
-//
-//	if (OK != ret)
-//	{
-//		perf_count(_comms_errors);
-//		log("i2c::transfer returned %d", ret);
-//		return ret;
-//	}
+	/* Not used in this driver measure phase and collect phase is in the method collect() */
 	int ret = OK;
 
 	return ret;
@@ -550,7 +543,7 @@ MAX127::collect()
 	 * In this case, it is a relative angle between a unmanned vehicle and a paraglider.
 	 * An offset adjustment is also included
 	 */
-	si_units = ((M_PI_2/(get_raw_at_pi_2(ch)-get_raw_at_zero(ch)))*value) - ((M_PI_2/(get_raw_at_pi_2(ch)-get_raw_at_zero(ch)))*get_raw_at_zero(ch));
+	si_units = (get_slope(ch)*value) - get_offset(ch);
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
@@ -618,22 +611,6 @@ MAX127::cycle_trampoline(void *arg)
 void
 MAX127::cycle()
 {
-//	/* measurement phase */
-//	if (OK != measure())
-//	{
-//		log("measure error");
-//		/* restart the measurement state machine */
-//		start();
-//		return;
-//	}
-//	else
-//	{
-//	/* next phase is collection */
-//	_collect_phase = true;
-//	}
-
-//	/* collection phase? */
-//	if (_collect_phase) {
 
 		/* perform collection */
 		if (OK != collect()) {
@@ -642,11 +619,6 @@ MAX127::cycle()
 			start();
 			return;
 		}
-
-//		/* next phase is measurement */
-//		_collect_phase = false;
-//
-//	}
 
 	/* schedule a fresh cycle call when the cycle is done */
 	work_queue(HPWORK,
