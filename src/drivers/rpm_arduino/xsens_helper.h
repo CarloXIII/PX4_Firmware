@@ -1,8 +1,8 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
- *   Author: @author Thomas Gubler <thomasgubler@student.ethz.ch>
- *
+ *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
+ *   Author: Thomas Gubler <thomasgubler@student.ethz.ch>
+ *           Julian Oes <joes@student.ethz.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,19 +33,36 @@
  *
  ****************************************************************************/
 
-/* @file Fixed Wing Attitude Control */
+/** 
+ * @file xsens_helper.h
+ */
 
-#ifndef FIXEDWING_ATT_CONTROL_ATT_H_
-#define FIXEDWING_ATT_CONTROL_ATT_H_
+#ifndef XSENS_HELPER_H
+#define XSENS_HELPER_H
 
-#include <uORB/topics/vehicle_rates_setpoint.h>
-#include <uORB/topics/vehicle_attitude_setpoint.h>
-#include <uORB/topics/vehicle_attitude.h>
-#include <uORB/topics/vehicle_global_position.h>
+#include <uORB/uORB.h>
+#include <uORB/topics/xsens_vehicle_gps_position.h>
+#include <uORB/topics/xsens_sensor_combined.h>
 
-int fixedwing_att_control_attitude(const struct vehicle_attitude_setpoint_s *att_sp,
-				   const struct vehicle_attitude_s *att,
-				   const float speed_body[],
-				   struct vehicle_rates_setpoint_s *rates_sp);
+class XSENS_Helper
+{
+public:
+	virtual int			configure(unsigned &baud) = 0;
+	virtual int 			receive(unsigned timeout) = 0;
+	int 				set_baudrate(const int &fd, unsigned baud);
+	float				get_position_update_rate();
+	float				get_velocity_update_rate();
+	float				reset_update_rates();
+	float				store_update_rates();
+	bool				xsens_new_gps_data;
+protected:
+	uint8_t _rate_count_lat_lon;
+	uint8_t _rate_count_vel;
 
-#endif /* FIXEDWING_ATT_CONTROL_ATT_H_ */
+	float _rate_lat_lon;
+	float _rate_vel;
+
+	uint64_t _interval_rate_start;
+};
+
+#endif /* XSENS_HELPER_H */

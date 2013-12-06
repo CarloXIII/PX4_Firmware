@@ -204,7 +204,7 @@ private:
 extern "C" __EXPORT int current_sensor_main(int argc, char *argv[]);
 
 MB12XX::MB12XX(int bus, int address) :
-	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 400000),
+	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 100000),
 	_min_distance(MB12XX_MIN_DISTANCE),
 	_max_distance(MB12XX_MAX_DISTANCE),
 	_reports(nullptr),

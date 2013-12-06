@@ -48,14 +48,12 @@
 
 #define GPS_DEFAULT_UART_PORT "/dev/ttyS3"
 
-#define GPS_DEVICE_PATH	"/dev/gps"
+#define GPS_DEVICE_PATH	"/dev/rpm"
 
 typedef enum {
-	GPS_DRIVER_MODE_NONE = 0,
-	GPS_DRIVER_MODE_UBX,
-	GPS_DRIVER_MODE_MTK,
-	GPS_DRIVER_MODE_NMEA,
-	GPS_DRIVER_MODE_NOVATEL,
+	RPM_DRIVER_MODE_NONE = 0,
+	RPM_DRIVER_MODE_ARDUINO,
+	RPM_DRIVER_MODE_XXX,
 } gps_driver_mode_t;
 
 
@@ -67,7 +65,7 @@ ORB_DECLARE(gps);
 /*
  * ioctl() definitions
  */
-#define _GPSIOCBASE			(0x2800)            //TODO: arbitrary choice...
-#define _GPSIOC(_n)		(_IOC(_GPSIOCBASE, _n))
+#define _RPMIOCBASE			(0x2800)            //TODO: arbitrary choice...
+#define _RPMIOC(_n)		(_IOC(_RPMIOCBASE, _n))
 
 #endif /* _DRV_GPS_H */
