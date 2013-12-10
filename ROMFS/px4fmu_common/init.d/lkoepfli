@@ -63,50 +63,58 @@ nshterm /dev/ttyACM0 &
 set EXIT_ON_END no
  
 #
-# Start and configure PX4IO or FMU interface
+# Start and configure PX4IO interface
+# Start MAVLink (on UART2 / ttyS1 with Baudrate 57600)
 #
-if px4io detect
-then
-	# Start MAVLink (depends on orb)
-	mavlink start
-	usleep 5000
- 
-	sh /etc/init.d/rc.io
-else
-	# Start MAVLink (on UART1 / ttyS0)
-	mavlink start -d /dev/ttyS0
-	usleep 5000
-	fmu mode_pwm
-	param set BAT_V_SCALING 0.004593
-	set EXIT_ON_END yes
-fi
+mavlink start -d /dev/ttyS1 -b 57600
+usleep 5000
+
+#
+# Start the commander.
+#
+commander start
+
+sh /etc/init.d/rc.io
  
 #
 # Start the sensors and test them.
 #
 sh /etc/init.d/rc.sensors
  
-#
-# Start the commander.
-#
-commander start
+
  
 #
 # Start XSENS interface
 #
-xsens start
- 
+#xsens start
+#usleep 5000
+
 #
-# Start the attitude position estimator
+# Start the attitude estimator or attitude position estimator
+# Use attitude position estimator only if Xsens is connected
 # This is the internal Kalman Filter of the PX4
 #
-att_pos_estimator_ekf start
+attitude_estimator_ekf start
+#att_pos_estimator_ekf start
 usleep 5000
+
+#
+# Load mixer and start controllers (depends on px4io)
+#
+mixer load /dev/pwm_output /etc/mixers/IO_test.mix
+fw_att_control start
+
+#
+# Start MAX127 ADC
+# This is used to measure the relative angle between vehicle and paraglider
+#
+#max127 start
+#usleep 5000
  
 #
-# Start sdlog2 with 50Hz
+# Start Data logging with 100Hz
 #
-sdlog2 start -r 50 -e
+sdlog2 start -r 100 -a
 
 if [ $EXIT_ON_END == yes ]
 then

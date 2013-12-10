@@ -173,7 +173,7 @@ struct log_STAT_s {
 #define LOG_RC_MSG 11
 struct log_RC_s {
 	uint64_t t;
-	float channel[8];
+	float channel[12];
 };
 
 /* --- OUT0 - ACTUATOR_0 OUTPUT --- */
@@ -375,7 +375,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPS, "QBffQLLfQffff", "GPS_t,FixTyp,EPH,EPV,POS_t,Lat,Lon,Alt,VEL_t,VelN,VelE,VelD,Cog"),
 	LOG_FORMAT(ATTC, "Qffff", "Time,Roll,Pitch,Yaw,Thrust"),
 	LOG_FORMAT(STAT, "QBBBfffBB", "Time,MainState,NavState,ArmState,BatV,BatC,BatRem,BatWarn,Landed"),
-	LOG_FORMAT(RC, "Qffffffff", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7"),
+	LOG_FORMAT(RC, "Qffffffffffff", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Ch8,Ch9,Ch10,Ch11"),
 	LOG_FORMAT(OUT0, "Qffffffff", "TimeOut0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
 	LOG_FORMAT(AIRS, "Qff", "Time,IndSpeed,TrueSpeed"),
 	LOG_FORMAT(ARSP, "Qfff", "Time,RollRateSP,PitchRateSP,YawRateSP"),
