@@ -46,22 +46,12 @@
 
 #include "xsens_parser.h"
 
-#define XSENS_GPS_PVT 1
-#define XSENS_TEMP 1
-#define XSENS_CALIBRATED_DATA 1
-#define XSENS_ORIENTATION_QUATERNION 0
-#define XSENS_ORIENTATION_EULER 0
-#define XSENS_ORIENTATION_MATRIX 0
-#define XSENS_AUXILIARY 0
-#define XSENS_POSITION 0
-#define XSENS_VELOCITY 0
-#define XSENS_STATUS 1
-#define XSENS_SAMPLE_COUNTER 1
-#define XSENS_UTC_TIME 1
 
 
-XSENS_PARSER::XSENS_PARSER(const int &fd, struct rpm_message * rpm_measurement :
+XSENS_PARSER:: XSENS_PARSER(const int &fd, struct rpm_report *rpm_measurement) :
 _fd(fd),
+//_gps_position(gps_position),
+//_xsens_sensor_combined(xsens_sensor_combined),
 _rpm_measurement(rpm_measurement),
 _xsens_revision(0),
 xsens_last_bgps(255)
@@ -150,51 +140,19 @@ int
 XSENS_PARSER::parse_char(uint8_t b)
 {
 	switch (_decode_state) {
-	//warnx("decoding");
+	warnx("decoding");
 		/* First, look for PRE */
 		case XSENS_DECODE_UNINIT:
-			if (b == XSENS_PRE) {
-				_decode_state = XSENS_DECODE_GOT_SYNC1;
+			if (b == RPM_PRE) {
+				_decode_state = XSENS_DECODE_GOT_MESSAGE_LGTH;
 				//_rx_buffer[_rx_count] = b;
 				//_rx_count++;
 				//warnx("PRE found");
 			}
 			break;
-		/* Second, look for BID */
-		case XSENS_DECODE_GOT_SYNC1:
-			if (b == XSENS_BID) {
-				_decode_state = XSENS_DECODE_GOT_SYNC2;
-				_rx_buffer[_rx_count] = b;
-				_rx_count++;
-				//warnx("BID found");
-			} else {
-				/* Second start symbol was wrong, reset state machine */
-				decode_init();
-			}
-			break;
-		/* Third, look for MID */
-		case XSENS_DECODE_GOT_SYNC2:
-			if (b == XSENS_MID) {
-				_decode_state = XSENS_DECODE_GOT_SYNC3;
-				_rx_buffer[_rx_count] = b;
-				_rx_count++;
-				//warnx("MID found");
-			} else {
-				/* Third start symbol was wrong, reset state machine */
-				decode_init();
-			}
-			break;
-		/* Get the length of the message */
-		case XSENS_DECODE_GOT_SYNC3:
-			_decode_state = XSENS_DECODE_GOT_MESSAGE_LGTH;
-			_rx_message_lgth = b;
-			_rx_buffer[_rx_count] = b;
-			_rx_count++;
-			//warnx("LEN: %x", _rx_message_lgth);
-			break;
 		/* Get the message */
 		case XSENS_DECODE_GOT_MESSAGE_LGTH:
-			if (_rx_count < (_rx_message_lgth + 3)) { //+BID+MID+LEN, Preamble not part of the message
+			if (_rx_count < (_rx_message_lgth)) {
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
 				//warnx("_rx_count: %x", _rx_count);
@@ -212,7 +170,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 				if ( (uint8_t) _calculated_checksum == 0) {
 					return 1;
 				} else {
-					warnx("xsens: Checksum wrong. calculated crc: %x", _calculated_checksum);
+					//warnx("xsens: Checksum wrong. calculated crc: %x", _calculated_checksum);
 					decode_init();
 					return -1;
 				}
@@ -230,65 +188,14 @@ XSENS_PARSER::handle_message()
 
 	int ret = 0;
 	char _rx_buffer_message[_rx_message_lgth];
-	memcpy(_rx_buffer_message, &(_rx_buffer[_rx_header_lgth]), _rx_message_lgth);
+	memcpy(_rx_buffer_message, &(_rx_buffer[_rx_header_lgth]), _rx_message_lgth);	//braucht es vielleicht nicht
 
 
-
-#if XSENS_CALIBRATED_DATA
-	unsigned xsens_calibrated_lgth = 36;
-	char _xsens_calibrated_message[xsens_calibrated_lgth];
-	memcpy(_xsens_calibrated_message, &(_rx_buffer[_rx_header_lgth]), xsens_calibrated_lgth);
-
-	swapBytes(_xsens_calibrated_message, xsens_calibrated_lgth);
-
-	xsens_calibrated_data_t *xsens_calibrated;
-	xsens_calibrated = (xsens_calibrated_data_t *) _xsens_calibrated_message;
-
-
-	_xsens_sensor_combined->accelerometer_m_s2[0] = xsens_calibrated->accx;
-	_xsens_sensor_combined->accelerometer_m_s2[1] = xsens_calibrated->accy;
-	_xsens_sensor_combined->accelerometer_m_s2[2] = xsens_calibrated->accz;
-	_xsens_sensor_combined->accelerometer_counter += 1;
-
-	_xsens_sensor_combined->gyro_rad_s[0] = xsens_calibrated->gyrx/2;	// XXX todo: chage normalized to gauss
-	_xsens_sensor_combined->gyro_rad_s[1] = xsens_calibrated->gyry/2; // XXX todo: chage normalized to gauss
-	_xsens_sensor_combined->gyro_rad_s[2] = xsens_calibrated->gyrz/2; // XXX todo: chage normalized to gauss (1gauss = 100*10^-6 Tesla) -> Erdmagnetfeld ca. 50uT=0.5gauss)
-	_xsens_sensor_combined->gyro_counter += 1;
-
-	_xsens_sensor_combined->magnetometer_ga[0] = xsens_calibrated->magx;
-	_xsens_sensor_combined->magnetometer_ga[1] = xsens_calibrated->magy;
-	_xsens_sensor_combined->magnetometer_ga[2] = xsens_calibrated->magz;
-	_xsens_sensor_combined->magnetometer_counter += 1;
-
-	_xsens_sensor_combined->timestamp = hrt_absolute_time();
-
-	_rx_header_lgth += xsens_calibrated_lgth;
-#endif
-
-
-#if XSENS_UTC_TIME
-	unsigned xsens_utc_lgth = 12;
-	char _xsens_utc_message[xsens_utc_lgth];
-	memcpy(_xsens_utc_message, &(_rx_buffer[_rx_header_lgth]), xsens_utc_lgth);
-
-	swapBytes(_xsens_utc_message, xsens_utc_lgth);
-
-	xsens_utc_time_t *xsens_utc;
-	xsens_utc = (xsens_utc_time_t *) _xsens_utc_message;
-
-	/*
-	warnx("status: %d", xsens_utc->status);
-	warnx("year: %d", xsens_utc->year);
-	warnx("month: %d", xsens_utc->month);
-	warnx("day: %d", xsens_utc->day);
-	warnx("hour: %d", xsens_utc->hour);
-	warnx("minute: %d", xsens_utc->minute);
-	warnx("second: %d", xsens_utc->seconds);
-	warnx("nanoseconds: %d", xsens_utc->nsec);
-	*/
-
-	_rx_header_lgth += xsens_utc_lgth;
-#endif
+	//rpm_report *rpm_measurement;
+	_rpm_measurement->rpm = 1.0f * (_rx_buffer[0] <<8 | _rx_buffer[1]);
+	_rpm_measurement->timestamp = hrt_absolute_time();
+	xsens_new_gps_data = true;
+	//warnx("status: %f", _rpm_measurement->rpm);
 
 	ret = 1;
 
@@ -301,15 +208,13 @@ XSENS_PARSER::decode_init()
 {
 	_decode_state = XSENS_DECODE_UNINIT;
 	_rx_count = 0;
-	_rx_message_lgth = 0;
+	_rx_message_lgth = 2;
 	_rx_header_lgth = 1;
 }
 
 unsigned long
 XSENS_PARSER::calculate_checksum(unsigned long message_lgth, unsigned char *data)
 {
-	unsigned long ulTemp1;
-	unsigned long ulTemp2;
 	unsigned long ulChecksum = 0;
 	int i = 0;
 	while ( message_lgth-- != 0 )
@@ -319,17 +224,3 @@ XSENS_PARSER::calculate_checksum(unsigned long message_lgth, unsigned char *data
 	}
 	return ulChecksum;
 }
-
-void
-XSENS_PARSER::swapBytes(char* message, unsigned size)
-{
-	for(int i = 0; i < (size / 2); i++)
-	{
-		_messageSwapped[i] = message[size-1-i];
-		_messageSwapped[size-1-i] = message[i];
-		message[i] = _messageSwapped[i];
-		message[size-1-i] = _messageSwapped[size-1-i];
-	}
-	return;
-}
-

@@ -58,10 +58,10 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
-#include <systemlib/geo/geo.h>
+#include <lib/geo/geo.h>
 #include <systemlib/systemlib.h>
 
-#include "fixedwing_att_control_rate.h"
+#include "governor_control_rate.h"
 
 /*
  * Controller parameters, accessible via MAVLink

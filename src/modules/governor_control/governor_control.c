@@ -49,16 +49,15 @@
 #include <drivers/drv_hrt.h>
 #include <arch/board/board.h>
 #include <uORB/uORB.h>
-
-
 #include <uORB/topics/vehicle_governor_setpoint.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
-#include <systemlib/geo/geo.h>
+#include <uORB/topics/actuator_controls.h>
 #include <systemlib/systemlib.h>
+#include <uORB/topics/manual_control_setpoint.h>
 
 #include "governor_control.h"
-
+#include <drivers/drv_rpm.h>
 
 
 #define DT_MIN 0.0025f	//Controller should run with maximal 400Hz
@@ -110,9 +109,9 @@ static int parameters_update(const struct governor_control_param_handles *h, str
 	return OK;
 }
 
-int governor_control(const struct vehicle_governor_setpoint_s *gov_sp,
+int governor_control(const struct rpm_report *rpm_measurement, const struct manual_control_setpoint_s *manual_sp,
 				struct actuator_controls_s *actuators)
-{
+{	// rpm_measurement -> from sensor, 			manual_sp -> form remote control, 		actuators -> to servos
 	static int counter = 0;
 	static bool initialized = false;
 
@@ -145,7 +144,7 @@ int governor_control(const struct vehicle_governor_setpoint_s *gov_sp,
 	last_run = hrt_absolute_time();
 
 	/* RPM */
-	actuators->control[3] = pid_calculate(&governor_controller, gov_sp->rpm, XXX, 0, deltaT);
+	//actuators->control[3] = pid_calculate(&governor_controller, actuators->control[4], XXX, 0, deltaT);
 
 	counter++;
 

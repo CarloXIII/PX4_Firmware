@@ -108,7 +108,7 @@ private:
 	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the XSENS has changed
 	bool				_mode_changed;					///< flag that the XSENS mode has changed
 	XSENS_Helper		*_Helper;						///< instance of XSENS parser
-	struct xsens_vehicle_gps_position_s 	_report;	///< uORB topic for xsens gps position
+	struct rpm_report 	_report;						///< uORB topic for xsens gps position
 	struct xsens_sensor_combined_s			_report_sensor_combined;	///< uORB topic for xsens sensor combined
 	orb_advert_t		_report_pub;					///< uORB pub for gps position
 	orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
@@ -272,7 +272,7 @@ XSENS::task_main()
 		}
 
 
-		_Helper = new XSENS_PARSER(_serial_fd, &_report, &_report_sensor_combined);
+		_Helper = new XSENS_PARSER(_serial_fd, &_report);
 
 		//warnx("xsens: task main started");
 
@@ -290,11 +290,11 @@ XSENS::task_main()
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
 					if(_Helper->xsens_new_gps_data == true){
-						orb_publish(ORB_ID(xsens_vehicle_gps_position), _report_pub, &_report);
+						orb_publish(ORB_ID(sensor_rpm), _report_pub, &_report);
 						_Helper->xsens_new_gps_data = false;
 					}
 				} else {
-					_report_pub = orb_advertise(ORB_ID(xsens_vehicle_gps_position), &_report);
+					_report_pub = orb_advertise(ORB_ID(sensor_rpm), &_report);
 				}
 
 				if (_report_pub_sensor_combined > 0) {
@@ -357,40 +357,12 @@ XSENS::print_info()
 void
 XSENS::print_status()
 {
-	printf("\n******\nXSENS data sent to kalman filter (xsens_vehicle_gps_position_s, xsens_sensor_combined_s)");
-	printf("GPS packet:");
-	//printf("\nformat test: %.3f", 334.98376f);
-	printf("\nhorizontal accuracy: %.3f", _report.p_variance_m);
-	printf("\nspeed accuracy: %.3f", _report.s_variance_m_s);
-	printf("\ncourse accuracy: %f", _report.c_variance_rad);
-	printf("\nfix type(3Dfix = 3): %d", _report.fix_type);
-	printf("\nlatitude: %d", _report.lat);
-	printf("\nlongitude: %d", _report.lon);
-	printf("\naltitude gps: %d", _report.alt);
-	printf("\nHDOP: %.3f", _report.eph_m);
-	printf("\nvelocity: %.3f", _report.vel_m_s);
-	printf("\nvelocity N: %.3f", _report.vel_n_m_s);
-	printf("\nvelocity E: %.3f", _report.vel_e_m_s);
-	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp_time)) / 1000000.0f) );
+	printf("\n******\nRPM Driver data Arduino");
+	printf("RPM packet:");
+	printf("\nRPM: %.3f", _report.rpm);
+	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp)) / 1000000.0f) );
 	printf("\nxsens package rate (not gps): %.3f", _rate );
 	//printf("\ngps data age (bGPS): %.3f", xsens_gps_pvt->bgps );
-	printf("\n******");
-	printf("\nSensor packet:");
-	printf("\naltitude barometer: %.3f", _report_sensor_combined.baro_alt_meter);
-	printf("\npressure barometer: %.3f", _report_sensor_combined.baro_pres_mbar);
-
-	printf("\ngyro x [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[0]);
-	printf("\ngyro y [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[1]);
-	printf("\ngyro z [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[2]);
-
-	printf("\naccel x [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[0]);
-	printf("\naccel y [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[1]);
-	printf("\naccel z [m/s2]: %.3f", _report_sensor_combined.accelerometer_m_s2[2]);
-
-	printf("\nmag x [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[0]);
-	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
-	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
-	printf("\n*****************************************************");
 
 	//xsens::_
 	//errx(0, "PASS");

@@ -66,23 +66,23 @@
 #include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
-#include <systemlib/geo/geo.h>
+//#include <systemlib/geo/geo.h>
 #include <systemlib/perf_counter.h>
 #include <systemlib/systemlib.h>
-
-#include "fixedwing_att_control_rate.h"
-#include "fixedwing_att_control_att.h"
+#include <drivers/drv_rpm.h>
+//#include "fixedwing_att_control_rate.h"
+//#include "fixedwing_att_control_att.h"
 
 /* Prototypes */
 /**
  * Deamon management function.
  */
-__EXPORT int fixedwing_att_control_main(int argc, char *argv[]);
+__EXPORT int governor_control_main(int argc, char *argv[]);
 
 /**
  * Mainloop of deamon.
  */
-int fixedwing_att_control_thread_main(int argc, char *argv[]);
+int governor_control_thread_main(int argc, char *argv[]);
 
 /**
  * Print the correct usage.
@@ -110,8 +110,10 @@ int governor_control_thread_main(int argc, char *argv[])
 	printf("[governor control] started\n");
 
 	/* declare and safely initialize all structs */
-	struct vehicle_governor_setpoint governor_setpoint;
+	struct vehicle_governor_setpoint_s governor_setpoint;
 	memset(&governor_setpoint, 0, sizeof(governor_setpoint));
+	struct rpm_report rpm_measurement;
+	memset(&rpm_measurement, 0, sizeof(rpm_measurement));
 
 	struct manual_control_setpoint_s manual_sp;
 	memset(&manual_sp, 0, sizeof(manual_sp));
@@ -130,12 +132,14 @@ int governor_control_thread_main(int argc, char *argv[])
 		actuators.control[i] = 0.0f;
 	}
 
-	//orb_advert_t actuator_pub = orb_advertise(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, &actuators);
-	//orb_advert_t rates_pub = orb_advertise(ORB_ID(vehicle_rates_setpoint), &rates_sp);
+	orb_advert_t actuator_pub = orb_advertise(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, &actuators);
+	//orb_advert_t rates_pub = orb_advertise(ORB_ID(vehicle_rates_setpoint), &rates_sp);	//werden nicht mehr gebarucht. könnte governor setpoint sein
+
 
 	/* subscribe */
+		// trigers loop
 	int gov_sp_sub = orb_subscribe(ORB_ID(vehicle_governor_setpoint));
-
+	int gov_sub = orb_subscribe(ORB_ID(sensor_rpm));
 	int manual_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	int control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
 	int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
@@ -144,7 +148,7 @@ int governor_control_thread_main(int argc, char *argv[])
 
 	//float gyro[3] = {0.0f, 0.0f, 0.0f};
 	//float speed_body[3] = {0.0f, 0.0f, 0.0f};
-	struct pollfd fds = { .fd = gov_sp_sub, .events = POLLIN };
+	struct pollfd fds = { .fd = gov_sub, .events = POLLIN };
 
 
 	while (!thread_should_exit) {
@@ -154,26 +158,28 @@ int governor_control_thread_main(int argc, char *argv[])
 		/* Check if there is a new position measurement or  attitude setpoint */
 		//bool pos_updated;
 		//orb_check(global_pos_sub, &pos_updated);
-		bool gov_sp_updated;
-		orb_check(gov_sp_sub, &gov_sp_updated);
+		bool gov_updated;
+		orb_check(gov_sub, &gov_updated);
 
 		/* get a local copy */
 
 
-		if (gov_sp_updated)
-			orb_copy(ORB_ID(vehicle_governor_setpoint), gov_sp_sub, &governor_setpoint);
+		if (gov_updated)
+			orb_copy(ORB_ID(sensor_rpm), gov_sub, &rpm_measurement);
 
 		orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);
 		orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);
 		orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);
 
 
-		/* set manual setpoints if required */
+
 		if (control_mode.flag_control_manual_enabled) {
-			actuators.control[3] = governor_control(governor_setpoint);
+			actuators.control[3] = governor_control(rpm_measurement, manual_sp, actuators);
 
 			/* pass through other channels */
-			//XXX
+			actuators.control[0] = manual_sp.control[0];
+			actuators.control[1] = manual_sp.control[1];
+			actuators.control[2] = manual_sp.control[3];
 
 		}
 
@@ -198,9 +204,9 @@ int governor_control_thread_main(int argc, char *argv[])
 
 
 
-	close(att_sub);
+	//close(att_sub);
 	close(actuator_pub);
-	close(rates_pub);
+	//close(rates_pub);
 
 	fflush(stdout);
 	exit(0);

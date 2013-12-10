@@ -25,7 +25,7 @@ struct vehicle_governor_setpoint_s
 
 	float rpm;	/**< RPM		*/
 
-}; /**< vehicle_governor_setpoint */
+}; /**< vehicle_governor_setpoint_s */
 
  /**
  * @}
