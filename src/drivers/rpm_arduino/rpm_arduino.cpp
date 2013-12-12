@@ -321,6 +321,7 @@ RPM_ARDUINO::print_status()
 	printf("\nRPM: %.3f", _report.rpm);
 	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp)) / 1000000.0f) );
 	printf("\nrpm package rate: %.3f", _rate );
+	printf("ubdate rate: \t%6.2f Hz", (double)_Helper->get_update_rate());
 	//printf("\ngps data age (bGPS): %.3f", xsens_gps_pvt->bgps );
 
 	//xsens::_

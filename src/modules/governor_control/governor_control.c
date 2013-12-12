@@ -26,14 +26,14 @@
 
 
 #define DT_MIN 0.0025f	//Controller should run with maximal 400Hz
-#define MAX_RPM_SP 880	//For Scout max RPM
+#define MAX_RPM_SP 880	//For Scout max RPM, also used to limit controller output
 
 
 // RPM control parameters
 PARAM_DEFINE_FLOAT(GOVERNOR_P, 1.0);
 PARAM_DEFINE_FLOAT(GOVERNOR_I, 0.0f);
 PARAM_DEFINE_FLOAT(GOVERNOR_D, 0.0f);
-PARAM_DEFINE_FLOAT(GOVERNOR_INTEGRAL_LIM, 100.0f);	// anti windup (symetrical at the moment)
+PARAM_DEFINE_FLOAT(GOVERNOR_INT_LIM, 100.0f);	// anti windup (symetrical at the moment)
 
 
 struct governor_control_params {
@@ -61,7 +61,7 @@ static int parameters_init(struct governor_control_param_handles *h)
 	h->governor_p 		=	param_find("GOVERNOR_P");
 	h->governor_i 		=	param_find("GOVERNOR_I");
 	h->governor_d 		=	param_find("GOVERNOR_D");
-	h->integral_limiter =	param_find("GOVERNOR_INTEGRAL_LIM");
+	h->integral_limiter =	param_find("GOVERNOR_INT_LIM");
 	return OK;
 }
 
@@ -100,7 +100,7 @@ int governor_control(const struct rpm_report *rpm_measurement, const struct manu
 	if (!initialized) {
 		parameters_init(&h);
 		parameters_update(&h, &p);
-		pid_init(&governor_controller, p.governor_p, p.governor_i, p.governor_d, 0, p.integral_limiter, PID_MODE_DERIVATIV_CALC, DT_MIN); //PI Controller
+		pid_init(&governor_controller, p.governor_p, p.governor_i, p.governor_d,  p.integral_limiter, MAX_RPM_SP, PID_MODE_DERIVATIV_CALC, DT_MIN); //PI Controller
 		// intmax is the anti-windup value (max i-value)
 		// limit is a symmetrical limiter, an asymmetric minimal limiter is not jet supported form PID lib
 		initialized = true;

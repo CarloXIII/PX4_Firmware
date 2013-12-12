@@ -153,9 +153,9 @@ int
 RPM_ARDUINO_PARSER::handle_message()
 {
 
-	int ret = 0;
-	char _rx_buffer_message[_rx_message_lgth];
-	memcpy(_rx_buffer_message, &(_rx_buffer[_rx_header_lgth]), _rx_message_lgth);	//braucht es vielleicht nicht
+	//int ret = 0;
+	//char _rx_buffer_message[_rx_message_lgth];
+	//memcpy(_rx_buffer_message, &(_rx_buffer[_rx_header_lgth]), _rx_message_lgth);	//braucht es vielleicht nicht
 
 
 	//rpm_report *rpm_measurement;
@@ -164,10 +164,11 @@ RPM_ARDUINO_PARSER::handle_message()
 	rpm_arduino_new_data = true;
 	//warnx("status: %f", _rpm_measurement->rpm);
 
-	ret = 1;
+	//ret = 1;
 
 	decode_init();
-	return ret;
+	_rate_count++;
+	return 1;
 }
 
 void

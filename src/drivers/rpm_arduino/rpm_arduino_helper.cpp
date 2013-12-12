@@ -10,30 +10,23 @@
  */
 
 float
-RPM_ARDUINO_Helper::get_position_update_rate()
+RPM_ARDUINO_Helper::get_update_rate()
 {
-	return _rate_lat_lon;
-}
-
-float
-RPM_ARDUINO_Helper::get_velocity_update_rate()
-{
-	return _rate_vel;
+	return _rate_measurement;
 }
 
 float
 RPM_ARDUINO_Helper::reset_update_rates()
 {
-	_rate_count_vel = 0;
-	_rate_count_lat_lon = 0;
+	_rate_count = 0;
+	_rate_measurement = 0;
 	_interval_rate_start = hrt_absolute_time();
 }
 
 float
 RPM_ARDUINO_Helper::store_update_rates()
 {
-	_rate_vel = _rate_count_vel / (((float)(hrt_absolute_time() - _interval_rate_start)) / 1000000.0f);
-	_rate_lat_lon = _rate_count_lat_lon / (((float)(hrt_absolute_time() - _interval_rate_start)) / 1000000.0f);
+	_rate_measurement = _rate_count / (((float)(hrt_absolute_time() - _interval_rate_start)) / 1000000.0f);
 }
 
 int
