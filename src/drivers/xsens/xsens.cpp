@@ -424,13 +424,20 @@ XSENS::print_status()
 	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
 	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
 
-	printf("\nroll : %.3f", _report_vehicle_attitude.roll);
-	printf("\npitch : %.3f", _report_vehicle_attitude.pitch);
-	printf("\nyaw : %.3f", _report_vehicle_attitude.yaw);
+	printf("\nVehicle Attitude packet: ");
+	printf("\nroll: %.3f", _report_vehicle_attitude.roll);
+	printf("\npitch: %.3f", _report_vehicle_attitude.pitch);
+	printf("\nyaw: %.3f", _report_vehicle_attitude.yaw);
+
+	printf("\nGlobal Position packet: ");
+	printf("\nlatitude: %.3f", _report_global_position.lat);
+	printf("\nlongitude: %.3f", _report_global_position.lon);
+	printf("\naltitude: %.3f", _report_global_position.alt);
+	printf("\nvelocity x: %.3f", _report_global_position.vx);
+	printf("\nvelocity y: %.3f", _report_global_position.vy);
+	printf("\nvelocity z: %.3f", _report_global_position.vz);
 
 	printf("\n*****************************************************");
-
-	// XXX Die weiteren Daten noch printen
 
 	//xsens::_
 	//errx(0, "PASS");

@@ -71,7 +71,7 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 	int32_t vel_d; /**< NED down velocity, cm/s */
 	int32_t vel_e; /**< NED east velocity, cm/s */
 	int32_t vel_n; /**< NED north velocity, cm/s */
-	int32_t alt; /**< Height above mean sea level, mm */
+	int32_t alt; /**< Altitude/Height above Ellipsoid, mm */
 	int32_t lon; /**< Longitude, 1e7*deg */
 	int32_t lat; /**< Latitude, 1e7*deg */
 	uint32_t itow; /**< GPS Millisecond Time of Week, ms */
@@ -84,9 +84,9 @@ typedef struct {
 }xsens_temp_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t magz; /**< Magnetic field z-axis [Arbitary Unit] */
-	float_t magy; /**< Magnetic field y-axis [Arbitary Unit] */
-	float_t magx; /**< Magnetic field x-axis [Arbitary Unit] */
+	float_t magz; /**< Magnetic field z-axis [arbitrary Unit normalized to earth field strength] */
+	float_t magy; /**< Magnetic field y-axis [arbitrary Unit normalized to earth field strength] */
+	float_t magx; /**< Magnetic field x-axis [arbitrary Unit normalized to earth field strength] */
 	float_t gyrz; /**< Angular rate z-axis [rad/s] */
 	float_t gyry; /**< Angular rate y-axis [rad/s] */
 	float_t gyrx; /**< Angular rate x-axis [rad/s] */
@@ -96,28 +96,28 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 }xsens_calibrated_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t q3; /**< Orientation quaternion format XXX*/
-	float_t q2; /**< Orientation quaternion format XXX*/
-	float_t q1; /**< Orientation quaternion format XXX*/
-	float_t q0; /**< Orientation quaternion format XXX*/
+	float_t q3; /**< Orientation quaternion format */
+	float_t q2; /**< Orientation quaternion format */
+	float_t q1; /**< Orientation quaternion format */
+	float_t q0; /**< Orientation quaternion format */
 }xsens_orientation_quaternion_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t yaw;	/**< yaw angle Orientation Euler angles format [deg] */
-	float_t pitch;	/**< pitch angle Orientation Euler angles format [deg] */
-	float_t roll;	/**< roll angle Orientation Euler angles format [deg] */
+	float_t yaw;	/**< yaw angle (rotation around Z) Orientation Euler angles format [deg], defined form (-180°...180°) */
+	float_t pitch;	/**< pitch angle (rotation around Y) Orientation Euler angles format [deg], defined form (-90°...90°) */
+	float_t roll;	/**< roll angle (rotation around X) Orientation Euler angles format [deg], defined form (-180°...180°) */
 }xsens_orientation_euler_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t i; /**< Orientation matrix format XXX */
-	float_t h; /**< Orientation matrix format XXX */
-	float_t g; /**< Orientation matrix format XXX */
-	float_t f; /**< Orientation matrix format XXX */
-	float_t e; /**< Orientation matrix format XXX */
-	float_t d; /**< Orientation matrix format XXX */
-	float_t c; /**< Orientation matrix format XXX */
-	float_t b; /**< Orientation matrix format XXX */
-	float_t a; /**< Orientation matrix format XXX */
+	float_t i; /**< Rotation matrix (DCM) */
+	float_t h; /**< Rotation matrix (DCM) */
+	float_t g; /**< Rotation matrix (DCM) */
+	float_t f; /**< Rotation matrix (DCM) */
+	float_t e; /**< Rotation matrix (DCM) */
+	float_t d; /**< Rotation matrix (DCM) */
+	float_t c; /**< Rotation matrix (DCM) */
+	float_t b; /**< Rotation matrix (DCM) */
+	float_t a; /**< Rotation matrix (DCM) */
 }xsens_orientation_matrix_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
@@ -138,11 +138,11 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 }xsens_velocity_data_t;
 
 typedef struct {
-	uint8_t status; /**< XXX */
+	uint8_t status; /**< Bit0:Self Test ; Bit1:XKF Valid ; Bit2:GPS Fix ; Bit3/4:No Rotation Status ; Bit5-7:reserved */
 }xsens_status_t;
 
 typedef struct {
-	uint16_t sample_counter; /**< XXX */
+	uint16_t sample_counter; /** wraps around after 65536 */
 }xsens_sample_counter_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)

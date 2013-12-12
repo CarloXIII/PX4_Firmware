@@ -17,6 +17,7 @@ fi
 # Start the ORB (first app to start)
 #
 uorb start
+usleep 5000
  
 #
 # Load microSD params
@@ -40,9 +41,10 @@ uorb start
 		fi
 	fi
 #fi
-
+  
 # Try to get an USB console
 nshterm /dev/ttyACM0 &
+usleep 5000
  
 #
 # Do not exit the shell per default
@@ -62,11 +64,15 @@ usleep 5000
 commander start
 
 sh /etc/init.d/rc.io
+usleep 5000
  
 #
 # Start the sensors and test them.
 #
 sh /etc/init.d/rc.sensors
+usleep 5000
+ 
+
  
 #
 # Start XSENS interface
@@ -84,15 +90,22 @@ attitude_estimator_ekf start
 usleep 5000
 
 #
-#
-#
-position_estimator_inav start
-
-#
-# Load mixer and start controllers (depends on px4io)
+# Load mixer
 #
 mixer load /dev/pwm_output /etc/mixers/IO_test.mix
+usleep 5000
+
+#
+# Start position estimator
+#
+position_estimator_inav start
+usleep 5000
+
+#
+# Start controller
+#
 fw_att_control start
+usleep 5000
 
 #
 # Start MAX127 ADC

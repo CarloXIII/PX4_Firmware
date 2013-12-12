@@ -87,6 +87,10 @@
 #include <uORB/topics/xsens_vehicle_attitude.h>
 #include <uORB/topics/xsens_vehicle_global_position.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
+/*
+ * TODO NEW ENTRY
+ * Include here your own uORB topic to logging
+ */
 
 #include <systemlib/systemlib.h>
 
@@ -610,7 +614,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 	struct vehicle_status_s buf_status;
 	memset(&buf_status, 0, sizeof(buf_status));
 
-	/* warning! using union here to save memory, elements should be used separately! */
+	/*
+	 * uORB STRUCTs
+	 * warning! using union here to save memory, elements should be used separately!
+	 */
 	union {
 		struct vehicle_command_s cmd;
 		struct sensor_combined_s sensor;
@@ -637,6 +644,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct xsens_vehicle_attitude_s xsens_attitude;
 		struct xsens_vehicle_global_position_s xsens_global_pos;
 		struct vehicle_paraglider_angle_s rel_angle;
+		/*
+		 * TODO NEW ENTRY
+		 * Add here your new struct and give them a new specific name
+		 */
 	} buf;
 	memset(&buf, 0, sizeof(buf));
 
@@ -666,6 +677,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 		int xsens_attitude_sub;
 		int xsens_global_pos_sub;
 		int rel_angle_sub;
+		/*
+		 * TODO NEW ENTRY
+		 * Add a new int variable for the packet in the same way as above
+		 */
 	} subs;
 
 	/* log message buffer: header + body */
@@ -698,6 +713,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 			struct log_XATT_s log_XATT;
 			struct log_XGPO_s log_XGPO;
 			struct log_RANG_s log_RANG;
+			/*
+			 * TODO NEW ENTRY
+			 * Add your own packet as above
+			 */
 		} body;
 	} log_msg = {
 		LOG_PACKET_HEADER_INIT(0)
@@ -706,7 +725,11 @@ int sdlog2_thread_main(int argc, char *argv[])
 	memset(&log_msg.body, 0, sizeof(log_msg.body));
 
 	/* --- IMPORTANT: DEFINE NUMBER OF ORB STRUCTS TO WAIT FOR HERE --- */
-	/* number of messages */
+	/*
+	 * TODO NEW ENTRY
+	 * Increase the const fdsc below by one, for every new added packet
+	 * The const fdsc counts the uORB struct who defined around line 617
+	 */
 	const ssize_t fdsc = 25;
 	/* Sanity check variable and index */
 	ssize_t fdsc_count = 0;
@@ -863,6 +886,11 @@ int sdlog2_thread_main(int argc, char *argv[])
 	fds[fdsc_count].fd = subs.rel_angle_sub;
 	fds[fdsc_count].events = POLLIN;
 	fdsc_count++;
+
+	/*
+	 * TODO NEW ENTRY
+	 * Add here your new entry as above
+	 */
 
 	/* WARNING: If you get the error message below,
 	 * then the number of registered messages (fdsc)
@@ -1370,6 +1398,11 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_RANG.ang_r = buf.rel_angle.si_units[1];
 				LOGBUFFER_WRITE_AND_COUNT(RANG);
 			}
+
+			/*
+			 * TODO NEW ENTRY
+			 * Add here your new packet as above
+			 */
 
 			/* signal the other thread new data, but not yet unlock */
 			if (logbuffer_count(&lb) > MIN_BYTES_TO_WRITE) {

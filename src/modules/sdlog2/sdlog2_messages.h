@@ -173,7 +173,7 @@ struct log_STAT_s {
 #define LOG_RC_MSG 11
 struct log_RC_s {
 	uint64_t t;
-	float channel[12];
+	float channel[8];
 };
 
 /* --- OUT0 - ACTUATOR_0 OUTPUT --- */
@@ -342,6 +342,12 @@ struct log_RANG_s {
 	float ang_r;
 };
 
+/*
+ * TODO NEW ENTRY
+ * Put here your own log messages and structures definition,
+ * as you see above.
+ */
+
 /* --- FWRV - FIRMWARE REVISION --- */
 #define LOG_FWRV_MSG 26
 struct log_FWRV_s {
@@ -375,7 +381,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPS, "QBffQLLfQffff", "GPS_t,FixTyp,EPH,EPV,POS_t,Lat,Lon,Alt,VEL_t,VelN,VelE,VelD,Cog"),
 	LOG_FORMAT(ATTC, "Qffff", "Time,Roll,Pitch,Yaw,Thrust"),
 	LOG_FORMAT(STAT, "QBBBfffBB", "Time,MainState,NavState,ArmState,BatV,BatC,BatRem,BatWarn,Landed"),
-	LOG_FORMAT(RC, "Qffffffffffff", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Ch8,Ch9,Ch10,Ch11"),
+	LOG_FORMAT(RC, "Qffffffff", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7"),
 	LOG_FORMAT(OUT0, "Qffffffff", "TimeOut0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
 	LOG_FORMAT(AIRS, "Qff", "Time,IndSpeed,TrueSpeed"),
 	LOG_FORMAT(ARSP, "Qfff", "Time,RollRateSP,PitchRateSP,YawRateSP"),
@@ -390,6 +396,10 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(XATT, "Qffffff", "Time,Roll,Pitch,Yaw,RollRate,PitchRate,YawRate"),
 	LOG_FORMAT(XGPO, "QLLffff", "Time,Lat,Lon,Alt,VelN,VelE,VelD"),
 	LOG_FORMAT(RANG, "Qff","Time,Ang_l,Ang_r"),
+	/* TODO NEW ENTRY
+	 * Put here your own construct with all message formats
+	 * The definition of the formats is given in sdlog2_format.h
+	 */
 	LOG_FORMAT(FWRV,"Z",FW_VERSION_STR),
 };
 
