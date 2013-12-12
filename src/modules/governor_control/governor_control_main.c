@@ -70,7 +70,7 @@
 #include <systemlib/perf_counter.h>
 #include <systemlib/systemlib.h>
 #include <drivers/drv_rpm.h>
-//#include "fixedwing_att_control_rate.h"
+#include "governor_control.h"
 //#include "fixedwing_att_control_att.h"
 
 /* Prototypes */
@@ -167,20 +167,47 @@ int governor_control_thread_main(int argc, char *argv[])
 		if (gov_updated)
 			orb_copy(ORB_ID(sensor_rpm), gov_sub, &rpm_measurement);
 
-		orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);
-		orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);
-		orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);
+			orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);
+			/*
+			 * The PX4 architecture provides a mixer outside of the controller.
+			 * The mixer is fed with a default vector of actuator controls, representing
+			 * moments applied to the vehicle frame. This vector
+			 * is structured as:
+			 *
+			 * Control Group 0 (attitude):
+			 *
+			 *    0  -  roll   (-1..+1)
+			 *    1  -  pitch  (-1..+1)
+			 *    2  -  yaw    (-1..+1)
+			 *    3  -  thrust ( 0..+1)
+			 *    4  -  flaps  (-1..+1)
+			 *    ...
+			 */
+			orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);
+			orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);
 
 
 
-		if (control_mode.flag_control_manual_enabled) {
-			actuators.control[3] = governor_control(rpm_measurement, manual_sp, actuators);
+		if (control_mode.flag_control_manual_enabled) {		//if channel 5 is switched middle pos
+			//printf("[control man enabled, start pid\n");
+			if (control_mode.flag_control_attitude_enabled) {	// governor mode sets rpm
+				governor_control(&rpm_measurement, &manual_sp, &actuators);	//actuators.control[3] is set here
 
-			/* pass through other channels */
-			actuators.control[0] = manual_sp.control[0];
-			actuators.control[1] = manual_sp.control[1];
-			actuators.control[2] = manual_sp.control[3];
+				/* pass through other channels */
+				actuators.control[0] = manual_sp.roll;
+				actuators.control[1] = manual_sp.pitch;
+				actuators.control[2] = manual_sp.yaw;
 
+				//printf("[actuator 0 = %f\n", manual_sp.roll);
+
+			} else {	// manual mode passes all channels
+				/* directly pass through values */
+				actuators.control[0] = manual_sp.roll;
+				/* positive pitch means negative actuator -> pull up */
+				actuators.control[1] = manual_sp.pitch;
+				actuators.control[2] = manual_sp.yaw;
+				actuators.control[3] = manual_sp.throttle;
+			}
 		}
 
 
@@ -190,6 +217,8 @@ int governor_control_thread_main(int argc, char *argv[])
 		    isfinite(actuators.control[2]) &&
 		    isfinite(actuators.control[3])) {
 			orb_publish(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, actuator_pub, &actuators);
+		} else {
+			printf("actuator not finite");
 		}
 	}
 

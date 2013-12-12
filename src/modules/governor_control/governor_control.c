@@ -33,7 +33,7 @@
  ****************************************************************************/
 /**
  * @file fixedwing_att_control_rate.c
- * Implementation of a fixed wing attitude controller.
+ *
  */
 
 #include <nuttx/config.h>
@@ -61,6 +61,14 @@
 
 
 #define DT_MIN 0.0025f	//Controller should run with maximal 400Hz
+#define MAX_RPM_SP 880	//For Scout
+
+
+// Roll control parameters
+PARAM_DEFINE_FLOAT(GOVERNOR_P, 1.0);
+PARAM_DEFINE_FLOAT(GOVERNOR_I, 0.0f);
+PARAM_DEFINE_FLOAT(GOVERNOR_D, 0.0f);
+PARAM_DEFINE_FLOAT(GOVERNOR_INTEGRAL_LIM, 100.0f);
 
 
 
@@ -68,16 +76,15 @@ struct governor_control_params {
 	float governor_p;
 	float governor_i;
 	float governor_d;
-	float max_throttle_lim;
-	float min_throttle_lim;
+	float integral_limiter;
 };
 
 struct governor_control_param_handles {
 	param_t governor_p;
 	param_t governor_i;
 	param_t governor_d;
-	param_t max_throttle_lim;
-	param_t min_throttle_lim;
+	param_t integral_limiter;
+
 };
 
 
@@ -92,9 +99,7 @@ static int parameters_init(struct governor_control_param_handles *h)
 	h->governor_p 		=	param_find("GOVERNOR_P");
 	h->governor_i 		=	param_find("GOVERNOR_I");
 	h->governor_d 		=	param_find("GOVERNOR_D");
-	h->max_throttle_lim =	param_find("MAX_THROTTLE_LIM");
-	h->min_throttle_lim =	param_find("MIN_THROTTLE_LIM");
-
+	h->integral_limiter =	param_find("GOVERNOR_INTEGRAL_LIM");
 	return OK;
 }
 
@@ -103,9 +108,7 @@ static int parameters_update(const struct governor_control_param_handles *h, str
 	param_get(h->governor_p, &(p->governor_p));
 	param_get(h->governor_i, &(p->governor_i));
 	param_get(h->governor_d, &(p->governor_d));
-	param_get(h->max_throttle_lim, &(p->max_throttle_lim));
-	param_get(h->min_throttle_lim, &(p->min_throttle_lim));
-
+	param_get(h->integral_limiter, &(p->integral_limiter));
 	return OK;
 }
 
@@ -125,9 +128,9 @@ int governor_control(const struct rpm_report *rpm_measurement, const struct manu
 	if (!initialized) {
 		parameters_init(&h);
 		parameters_update(&h, &p);
-		pid_init(&governor_controller, p.governor_p, p.governor_i, p.governor_d, 0, p.max_throttle_lim, PID_MODE_DERIVATIV_CALC, DT_MIN); //PI Controller
+		pid_init(&governor_controller, p.governor_p, p.governor_i, p.governor_d, 0, p.integral_limiter, PID_MODE_DERIVATIV_CALC, DT_MIN); //PI Controller
 		// intmax is the anti-windup value (max i-value)
-		// limit is a symmetrical limiter, an asymmetric minimal limiter is not jet supported so, min_throttle_lim will be ignored at the moment
+		// limit is a symmetrical limiter, an asymmetric minimal limiter is not jet supported form PID lib
 		initialized = true;
 	}
 
@@ -135,16 +138,23 @@ int governor_control(const struct rpm_report *rpm_measurement, const struct manu
 	if (counter % 100 == 0) {
 		/* update parameters from storage */
 		parameters_update(&h, &p);
-		pid_set_parameters(&governor_controller, p.governor_p, p.governor_i, p.governor_d, 0, p.max_throttle_lim);
+		printf("param updated: p = %f, i=%f, d=%f\n", p.governor_p, p.governor_i, p.governor_d);
+		pid_set_parameters(&governor_controller, p.governor_p, p.governor_i, p.governor_d, 0, MAX_RPM_SP);
 	}
-
 
 	static uint64_t last_run = 0;
 	float deltaT = (hrt_absolute_time() - last_run) / 1000000.0f;
 	last_run = hrt_absolute_time();
 
-	/* RPM */
-	//actuators->control[3] = pid_calculate(&governor_controller, actuators->control[4], XXX, 0, deltaT);
+	float reference_rpm = manual_sp->throttle * MAX_RPM_SP;		//scaling of the throttle (0..1) to rpm (0...MAX_RPM_SP)
+	actuators->control[3] = pid_calculate(&governor_controller, reference_rpm, rpm_measurement->rpm, 0, deltaT) / MAX_RPM_SP;
+
+		if (counter % 100 == 0) {
+			printf("actuator output (throttle, CH3) = %.3f, manual setpoint = %.3f, rpm_measurement->rpm = %f.1\n",actuators->control[3], reference_rpm, rpm_measurement->rpm);
+			printf("actuator output CH0 = %.3f, actuator output CH1 = %.3f, actuator output CH2 = %.3f, actuator output CH4 = %.3f\n",actuators->control[0] ,actuators->control[1], actuators->control[2], actuators->control[4]);
+		}
+
+
 
 	counter++;
 
