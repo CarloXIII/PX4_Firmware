@@ -105,10 +105,15 @@ then
 			blinkm systemstate
 		fi
 	fi
+	
+	#
+	# Start the Commander (needs to be this early for in-air-restarts)
+	#
+	commander start
 
 	if param compare SYS_AUTOSTART 1000
 	then
-		sh /etc/init.d/1000_rc_fw.hil		
+		sh /etc/init.d/1000_rc_fw_easystar.hil		
 		set MODE custom
 	fi
 	
@@ -127,6 +132,12 @@ then
 	if param compare SYS_AUTOSTART 1003
 	then
 		sh /etc/init.d/1003_rc_quad_+.hil
+		set MODE custom
+	fi
+
+	if param compare SYS_AUTOSTART 1004
+	then
+		sh /etc/init.d/1004_rc_fw_Rascal110.hil
 		set MODE custom
 	fi
 	
@@ -259,26 +270,38 @@ then
 		set MODE custom
 	fi
 
-        # PX4FMU v1 with IO + PPM-based ESCs on Quad X-shape frame
-        if param compare SYS_AUTOSTART 22
-        then
-                set FRAME_GEOMETRY w
-                sh /etc/init.d/rc.custom_io_esc
-                set MODE custom
-        fi
+	# PX4FMU v1 with IO + PPM-based ESCs on Quad X-shape frame
+	if param compare SYS_AUTOSTART 22
+	then
+		set FRAME_GEOMETRY w
+		sh /etc/init.d/rc.custom_io_esc
+		set MODE custom
+	fi
 	
 	if param compare SYS_AUTOSTART 30
 	then
 		sh /etc/init.d/30_io_camflyer
 		set MODE custom
 	fi
-	
+
 	if param compare SYS_AUTOSTART 31
 	then
 		sh /etc/init.d/31_io_phantom
 		set MODE custom
 	fi
+	
+	if param compare SYS_AUTOSTART 32
+	then
+		sh /etc/init.d/32_skywalker_x5
+		set MODE custom
+	fi
 
+	if param compare SYS_AUTOSTART 40
+	then
+		sh /etc/init.d/40_io_segway
+		set MODE custom
+	fi
+	
 	if param compare SYS_AUTOSTART 100
 	then
 		sh /etc/init.d/100_mpx_easystar
@@ -288,6 +311,12 @@ then
 	if param compare SYS_AUTOSTART 101
 	then
 		sh /etc/init.d/101_hk_bixler
+		set MODE custom
+	fi
+
+	if param compare SYS_AUTOSTART 102
+	then
+		sh /etc/init.d/102_3dr_skywalker
 		set MODE custom
 	fi
 	
