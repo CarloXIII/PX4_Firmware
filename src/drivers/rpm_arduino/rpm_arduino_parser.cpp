@@ -1,38 +1,5 @@
-/****************************************************************************
- *
- *   Copyright (C) 2008-2013 PX4 Development Team. All rights reserved.
- *   Author: Carlo Zgraggen <carlo.zgraggen@hslu.ch>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
 
-/* @file xsens_parser.cpp */
+/* @file rpm_arduino_parser.cpp */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -44,39 +11,39 @@
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_rpm.h>
 
-#include "xsens_parser.h"
+#include "rpm_arduino_parser.h"
 
 
 
-XSENS_PARSER:: XSENS_PARSER(const int &fd, struct rpm_report *rpm_measurement) :
+RPM_ARDUINO_PARSER:: RPM_ARDUINO_PARSER(const int &fd, struct rpm_report *rpm_measurement) :
 _fd(fd),
 //_gps_position(gps_position),
 //_xsens_sensor_combined(xsens_sensor_combined),
 _rpm_measurement(rpm_measurement),
-_xsens_revision(0),
-xsens_last_bgps(255)
+_rpm_arduino_revision(0),
+rpm_arduino_last_bgps(255)
 {
 	decode_init();
 }
 
-XSENS_PARSER::~XSENS_PARSER()
+RPM_ARDUINO_PARSER::~RPM_ARDUINO_PARSER()
 {
 }
 
 int
-XSENS_PARSER::configure(unsigned &baudrate)
+RPM_ARDUINO_PARSER::configure(unsigned &baudrate)
 {
 	/* set baudrate first */
-	if (XSENS_Helper::set_baudrate(_fd, XSENS_BAUDRATE) != 0)
+	if (RPM_ARDUINO_Helper::set_baudrate(_fd, RPM_ARDUINO_BAUDRATE) != 0)
 		return -1;
 
-	baudrate = XSENS_BAUDRATE;
+	baudrate = RPM_ARDUINO_BAUDRATE;
 
 	return 0;
 }
 
 int
-XSENS_PARSER::receive(unsigned timeout)
+RPM_ARDUINO_PARSER::receive(unsigned timeout)
 {
 	/* poll descriptor */
 	pollfd fds[1];
@@ -137,21 +104,21 @@ XSENS_PARSER::receive(unsigned timeout)
 }
 
 int
-XSENS_PARSER::parse_char(uint8_t b)
+RPM_ARDUINO_PARSER::parse_char(uint8_t b)
 {
 	switch (_decode_state) {
 	warnx("decoding");
 		/* First, look for PRE */
-		case XSENS_DECODE_UNINIT:
+		case RPM_ARDUINO_DECODE_UNINIT:
 			if (b == RPM_PRE) {
-				_decode_state = XSENS_DECODE_GOT_MESSAGE_LGTH;
+				_decode_state = RPM_ARDUINO_DECODE_GOT_MESSAGE_LGTH;
 				//_rx_buffer[_rx_count] = b;
 				//_rx_count++;
 				//warnx("PRE found");
 			}
 			break;
 		/* Get the message */
-		case XSENS_DECODE_GOT_MESSAGE_LGTH:
+		case RPM_ARDUINO_DECODE_GOT_MESSAGE_LGTH:
 			if (_rx_count < (_rx_message_lgth)) {
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
@@ -161,7 +128,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 				//for (int i = 0; i < _rx_message_lgth+3; i++){
 				//	warnx("xsens: _rx_buffer_message[%d]: %x", i, _rx_buffer[i]);
 				//}
-				_decode_state = XSENS_DECODE_GOT_CHECKSUM;
+				_decode_state = RPM_ARDUINO_DECODE_GOT_CHECKSUM;
 				_rx_buffer[_rx_count] = b;
 				_rx_count++;
 
@@ -183,7 +150,7 @@ XSENS_PARSER::parse_char(uint8_t b)
 }
 
 int
-XSENS_PARSER::handle_message()
+RPM_ARDUINO_PARSER::handle_message()
 {
 
 	int ret = 0;
@@ -194,7 +161,7 @@ XSENS_PARSER::handle_message()
 	//rpm_report *rpm_measurement;
 	_rpm_measurement->rpm = 1.0f * (_rx_buffer[0] <<8 | _rx_buffer[1]);
 	_rpm_measurement->timestamp = hrt_absolute_time();
-	xsens_new_gps_data = true;
+	rpm_arduino_new_data = true;
 	//warnx("status: %f", _rpm_measurement->rpm);
 
 	ret = 1;
@@ -204,16 +171,16 @@ XSENS_PARSER::handle_message()
 }
 
 void
-XSENS_PARSER::decode_init()
+RPM_ARDUINO_PARSER::decode_init()
 {
-	_decode_state = XSENS_DECODE_UNINIT;
+	_decode_state = RPM_ARDUINO_DECODE_UNINIT;
 	_rx_count = 0;
 	_rx_message_lgth = 2;
 	_rx_header_lgth = 1;
 }
 
 unsigned long
-XSENS_PARSER::calculate_checksum(unsigned long message_lgth, unsigned char *data)
+RPM_ARDUINO_PARSER::calculate_checksum(unsigned long message_lgth, unsigned char *data)
 {
 	unsigned long ulChecksum = 0;
 	int i = 0;

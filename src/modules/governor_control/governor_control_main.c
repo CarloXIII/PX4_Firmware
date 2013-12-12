@@ -1,40 +1,7 @@
-/****************************************************************************
- *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
- *   Author: 	@author Thomas Gubler <thomasgubler@student.ethz.ch>
- *   			@author Doug Weibel <douglas.weibel@colorado.edu>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
 /**
- * @file fixedwing_att_control.c
- * Implementation of a fixed wing attitude controller.
+ * @file governor_controller_main.c
+ * @author Benedikt Imbach, 2013
+ * Implementation of a governor controller to use with rpm_arduino driver.
  */
 
 #include <nuttx/config.h>
@@ -60,18 +27,13 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_global_position.h>
-
-#include <uORB/topics/vehicle_governor_setpoint.h>
-
 #include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
-//#include <systemlib/geo/geo.h>
 #include <systemlib/perf_counter.h>
 #include <systemlib/systemlib.h>
 #include <drivers/drv_rpm.h>
 #include "governor_control.h"
-//#include "fixedwing_att_control_att.h"
 
 /* Prototypes */
 /**
@@ -98,7 +60,7 @@ static int deamon_task;				/**< Handle of deamon task / thread */
 int governor_control_thread_main(int argc, char *argv[])
 {
 	/* read arguments */
-	bool verbose = false;
+	bool verbose = false;		// for talking option
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
@@ -110,22 +72,18 @@ int governor_control_thread_main(int argc, char *argv[])
 	printf("[governor control] started\n");
 
 	/* declare and safely initialize all structs */
-	struct vehicle_governor_setpoint_s governor_setpoint;
-	memset(&governor_setpoint, 0, sizeof(governor_setpoint));
 	struct rpm_report rpm_measurement;
 	memset(&rpm_measurement, 0, sizeof(rpm_measurement));
-
 	struct manual_control_setpoint_s manual_sp;
 	memset(&manual_sp, 0, sizeof(manual_sp));
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
-	struct vehicle_status_s vstatus;
-	memset(&vstatus, 0, sizeof(vstatus));
+	//struct vehicle_status_s vstatus;
+	//memset(&vstatus, 0, sizeof(vstatus));
 
 	/* output structs */
 	struct actuator_controls_s actuators;
 	memset(&actuators, 0, sizeof(actuators));
-
 
 	/* publish actuator controls */
 	for (unsigned i = 0; i < NUM_ACTUATOR_CONTROLS; i++) {
@@ -133,41 +91,31 @@ int governor_control_thread_main(int argc, char *argv[])
 	}
 
 	orb_advert_t actuator_pub = orb_advertise(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, &actuators);
-	//orb_advert_t rates_pub = orb_advertise(ORB_ID(vehicle_rates_setpoint), &rates_sp);	//werden nicht mehr gebarucht. könnte governor setpoint sein
-
 
 	/* subscribe */
-		// trigers loop
-	int gov_sp_sub = orb_subscribe(ORB_ID(vehicle_governor_setpoint));
 	int gov_sub = orb_subscribe(ORB_ID(sensor_rpm));
 	int manual_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	int control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
-	int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
+	//int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));		// not used jet the moment
+
 
 	/* Setup of loop */
-
-	//float gyro[3] = {0.0f, 0.0f, 0.0f};
-	//float speed_body[3] = {0.0f, 0.0f, 0.0f};
 	struct pollfd fds = { .fd = gov_sub, .events = POLLIN };
 
 
 	while (!thread_should_exit) {
-		/* wait for a sensor update, check for exit condition every 500 ms */
+		/* wait for a sensor update, check for exit condition every 500 ms with this while-loop */
 		poll(&fds, 1, 500);
 
-		/* Check if there is a new position measurement or  attitude setpoint */
-		//bool pos_updated;
-		//orb_check(global_pos_sub, &pos_updated);
+
+
 		bool gov_updated;
-		orb_check(gov_sub, &gov_updated);
+		orb_check(gov_sub, &gov_updated); /* Check if there is a new rpm measurement */
 
 		/* get a local copy */
-
-
 		if (gov_updated)
 			orb_copy(ORB_ID(sensor_rpm), gov_sub, &rpm_measurement);
-
-			orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);
+			orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);	// Also update the setpoint from the radio control
 			/*
 			 * The PX4 architecture provides a mixer outside of the controller.
 			 * The mixer is fed with a default vector of actuator controls, representing
@@ -183,12 +131,11 @@ int governor_control_thread_main(int argc, char *argv[])
 			 *    4  -  flaps  (-1..+1)
 			 *    ...
 			 */
-			orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);
-			orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);
+			orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);	// update the flags for operating mode
+			//orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);
 
 
-
-		if (control_mode.flag_control_manual_enabled) {		//if channel 5 is switched middle pos
+		if (control_mode.flag_control_manual_enabled) {		// not jet clear
 			//printf("[control man enabled, start pid\n");
 			if (control_mode.flag_control_attitude_enabled) {	// governor mode sets rpm
 				governor_control(&rpm_measurement, &manual_sp, &actuators);	//actuators.control[3] is set here
@@ -200,15 +147,15 @@ int governor_control_thread_main(int argc, char *argv[])
 
 				//printf("[actuator 0 = %f\n", manual_sp.roll);
 
-			} else {	// manual mode passes all channels
+			} else {											// manual mode passes all channels
 				/* directly pass through values */
 				actuators.control[0] = manual_sp.roll;
 				/* positive pitch means negative actuator -> pull up */
 				actuators.control[1] = manual_sp.pitch;
 				actuators.control[2] = manual_sp.yaw;
 				actuators.control[3] = manual_sp.throttle;
-			}
-		}
+			} // exit: control_mode.flag_control_attitude_enabled
+		} //exit: control_mode.flag_control_manual_enabled
 
 
 		/* sanity check and publish actuator outputs */
@@ -220,7 +167,7 @@ int governor_control_thread_main(int argc, char *argv[])
 		} else {
 			printf("actuator not finite");
 		}
-	}
+	} // exit: while loop
 
 	printf("[governor_control] exiting, engine shut down.\n");
 	thread_running = false;
@@ -231,12 +178,11 @@ int governor_control_thread_main(int argc, char *argv[])
 
 	orb_publish(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, actuator_pub, &actuators);
 
-
-
-	//close(att_sub);
+	close(gov_sub);
 	close(actuator_pub);
-	//close(rates_pub);
-
+	close(manual_sp_sub);
+	close(control_mode_sub);
+	//close(vehicle_status_sub);
 	fflush(stdout);
 	exit(0);
 

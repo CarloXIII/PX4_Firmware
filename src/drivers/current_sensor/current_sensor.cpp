@@ -1,6 +1,6 @@
 /**
  * @file current_sensor.cpp
- * @author Benedikt Imbach
+ * @author Benedikt Imbach, 2013
 
  *
  *Current sensor driver based on the FHS 40-PSP600 current sensor

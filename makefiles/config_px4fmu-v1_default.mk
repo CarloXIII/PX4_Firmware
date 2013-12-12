@@ -38,7 +38,7 @@ MODULES		+= drivers/airspeed
 MODULES		+= drivers/ets_airspeed
 MODULES		+= drivers/meas_airspeed
 MODULES		+= modules/sensors
-#MODULES     += drivers/xsens
+MODULES     += drivers/xsens
 MODULES		+= drivers/current_sensor
 MODULES		+= drivers/rpm_arduino
 

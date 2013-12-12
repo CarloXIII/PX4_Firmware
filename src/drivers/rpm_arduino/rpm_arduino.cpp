@@ -1,39 +1,9 @@
-/****************************************************************************
- *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
-
 /**
- * @file xsens.cpp
- * Driver for the xsens on a serial port
+ * @file rpm_arduino.cpp
+ * @author Benedikt Imbach, 2013
+
+ *
+ * Driver for the arudino board pro mini on a serial port
  */
 
 #include <nuttx/clock.h>
@@ -59,12 +29,9 @@
 #include <systemlib/perf_counter.h>
 #include <systemlib/scheduling_priorities.h>
 #include <systemlib/err.h>
-#include <drivers/drv_xsens.h>
 #include <uORB/uORB.h>
-#include <uORB/topics/xsens_vehicle_gps_position.h>
-
-#include "xsens_parser.h"
-
+#include "rpm_arduino_parser.h"
+//#include "drivers/drv_rpm.h"
 
 #define TIMEOUT_5HZ 500
 #define RATE_MEASUREMENT_PERIOD 5000000
@@ -81,11 +48,11 @@ static const int ERROR = -1;
 
 
 
-class XSENS : public device::CDev
+class RPM_ARDUINO : public device::CDev
 {
 public:
-	XSENS(const char* uart_path);
-	virtual ~XSENS();
+	RPM_ARDUINO(const char* uart_path);
+	virtual ~RPM_ARDUINO();
 
 	virtual int			init();
 
@@ -107,11 +74,10 @@ private:
 	bool				_healthy;						///< flag to signal if the XSENS is ok
 	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the XSENS has changed
 	bool				_mode_changed;					///< flag that the XSENS mode has changed
-	XSENS_Helper		*_Helper;						///< instance of XSENS parser
+	RPM_ARDUINO_Helper	*_Helper;						///< instance of XSENS parser
 	struct rpm_report 	_report;						///< uORB topic for xsens gps position
-	struct xsens_sensor_combined_s			_report_sensor_combined;	///< uORB topic for xsens sensor combined
 	orb_advert_t		_report_pub;					///< uORB pub for gps position
-	orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
+	//orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
 	float				_rate;							///< position update rate
 
 
@@ -147,24 +113,24 @@ private:
 /*
  * Driver 'main' command.
  */
-extern "C" __EXPORT int xsens_main(int argc, char *argv[]);
+extern "C" __EXPORT int rpm_arduino_main(int argc, char *argv[]);
 
 namespace
 {
 
-XSENS	*g_dev;
+RPM_ARDUINO	*g_dev;
 
 }
 
 
-XSENS::XSENS(const char* uart_path) :
-	CDev("xsens", XSENS_DEVICE_PATH),
+RPM_ARDUINO::RPM_ARDUINO(const char* uart_path) :
+	CDev("rpm_arduino", RPM_ARDUINO_DEVICE_PATH),
 	_task_should_exit(false),
 	_healthy(false),
 	_mode_changed(false),
 	_Helper(nullptr),
 	_report_pub(-1),
-	_report_pub_sensor_combined(-1),
+	//_report_pub_sensor_combined(-1),
 	_rate(0.0f)
 {
 	/* store port name */
@@ -175,12 +141,10 @@ XSENS::XSENS(const char* uart_path) :
 	/* we need this potentially before it could be set in task_main */
 	g_dev = this;
 	memset(&_report, 0, sizeof(_report));
-	memset(&_report_sensor_combined, 0, sizeof(_report_sensor_combined));
-
 	_debug_enabled = true;
 }
 
-XSENS::~XSENS()
+RPM_ARDUINO::~RPM_ARDUINO()
 {
 	/* tell the task we want it to go away */
 	_task_should_exit = true;
@@ -199,7 +163,7 @@ XSENS::~XSENS()
 }
 
 int
-XSENS::init()
+RPM_ARDUINO::init()
 {
 	int ret = ERROR;
 
@@ -208,7 +172,7 @@ XSENS::init()
 		goto out;
 
 	/* start the XSENS driver worker task */
-	_task = task_create("xsens", SCHED_PRIORITY_SLOW_DRIVER, 2048, (main_t)&XSENS::task_main_trampoline, nullptr);
+	_task = task_create("rpm_arduino", SCHED_PRIORITY_SLOW_DRIVER, 2048, (main_t)&RPM_ARDUINO::task_main_trampoline, nullptr);
 
 	if (_task < 0) {
 		warnx("task start failed: %d", errno);
@@ -221,7 +185,7 @@ out:
 }
 
 int
-XSENS::ioctl(struct file *filp, int cmd, unsigned long arg)
+RPM_ARDUINO::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 	lock();
 
@@ -239,13 +203,13 @@ XSENS::ioctl(struct file *filp, int cmd, unsigned long arg)
 }
 
 void
-XSENS::task_main_trampoline(void *arg)
+RPM_ARDUINO::task_main_trampoline(void *arg)
 {
 	g_dev->task_main();
 }
 
 void
-XSENS::task_main()
+RPM_ARDUINO::task_main()
 {
 	log("starting");
 
@@ -272,7 +236,7 @@ XSENS::task_main()
 		}
 
 
-		_Helper = new XSENS_PARSER(_serial_fd, &_report);
+		_Helper = new RPM_ARDUINO_PARSER(_serial_fd, &_report);
 
 		//warnx("xsens: task main started");
 
@@ -289,19 +253,14 @@ XSENS::task_main()
 				//warnx("xsens: receive");
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
-					if(_Helper->xsens_new_gps_data == true){
+					if(_Helper->rpm_arduino_new_data == true){
 						orb_publish(ORB_ID(sensor_rpm), _report_pub, &_report);
-						_Helper->xsens_new_gps_data = false;
+						_Helper->rpm_arduino_new_data = false;
 					}
 				} else {
 					_report_pub = orb_advertise(ORB_ID(sensor_rpm), &_report);
 				}
 
-				if (_report_pub_sensor_combined > 0) {
-					orb_publish(ORB_ID(xsens_sensor_combined), _report_pub_sensor_combined, &_report_sensor_combined);
-				} else {
-					_report_pub_sensor_combined = orb_advertise(ORB_ID(xsens_sensor_combined), &_report_sensor_combined);
-				}
 
 				last_rate_count++;
 
@@ -342,26 +301,26 @@ XSENS::task_main()
 
 
 void
-XSENS::cmd_reset()
+RPM_ARDUINO::cmd_reset()
 {
 	//XXX add reset?
 }
 
 void
-XSENS::print_info()
+RPM_ARDUINO::print_info()
 {
 	warnx("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
 	usleep(100000);
 }
 
 void
-XSENS::print_status()
+RPM_ARDUINO::print_status()
 {
 	printf("\n******\nRPM Driver data Arduino");
 	printf("RPM packet:");
 	printf("\nRPM: %.3f", _report.rpm);
 	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp)) / 1000000.0f) );
-	printf("\nxsens package rate (not gps): %.3f", _rate );
+	printf("\nrpm package rate: %.3f", _rate );
 	//printf("\ngps data age (bGPS): %.3f", xsens_gps_pvt->bgps );
 
 	//xsens::_
@@ -375,10 +334,10 @@ XSENS::print_status()
 /**
  * Local functions in support of the shell command.
  */
-namespace xsens
+namespace rpm_arduino
 {
 
-XSENS	*g_dev;
+RPM_ARDUINO	*g_dev;
 
 void	start(const char *uart_path);
 void	stop();
@@ -398,7 +357,7 @@ start(const char *uart_path)
 		errx(1, "already started");
 
 	/* create the driver */
-	g_dev = new XSENS(uart_path);
+	g_dev = new RPM_ARDUINO(uart_path);
 
 	if (g_dev == nullptr)
 		goto fail;
@@ -407,10 +366,10 @@ start(const char *uart_path)
 		goto fail;
 
 	/* set the poll rate to default, starts automatic data collection */
-	fd = open(XSENS_DEVICE_PATH, O_RDONLY);
+	fd = open(RPM_ARDUINO_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0) {
-		errx(1, "Could not open device path: %s\n", XSENS_DEVICE_PATH);
+		errx(1, "Could not open device path: %s\n", RPM_ARDUINO_DEVICE_PATH);
 		goto fail;
 	}
 	exit(0);
@@ -458,7 +417,7 @@ test()
 void
 reset()
 {
-	int fd = open(XSENS_DEVICE_PATH, O_RDONLY);
+	int fd = open(RPM_ARDUINO_DEVICE_PATH, O_RDONLY);
 
 	if (fd < 0)
 		err(1, "failed ");
@@ -487,11 +446,11 @@ info()
 
 
 int
-xsens_main(int argc, char *argv[])
+rpm_arduino_main(int argc, char *argv[])
 {
 
 	/* set to default */
-	char* device_name = XSENS_DEFAULT_UART_PORT;
+	char* device_name = RPM_ARDUINO_DEFAULT_UART_PORT;
 
 	/*
 	 * Start/load the driver.
@@ -505,29 +464,29 @@ xsens_main(int argc, char *argv[])
 				goto out;
 			}
 		}
-		xsens::start(device_name);
+		rpm_arduino::start(device_name);
 	}
 
 	if (!strcmp(argv[1], "stop"))
-		xsens::stop();
+		rpm_arduino::stop();
 	/*
 	 * Test the driver/device.
 	 */
 	if (!strcmp(argv[1], "test"))
-		xsens::test();
+		rpm_arduino::test();
 
 	/*
 	 * Reset the driver.
 	 */
 	if (!strcmp(argv[1], "reset"))
-		xsens::reset();
+		rpm_arduino::reset();
 
 	/*
 	 * Print driver status.
 	 */
 	if (!strcmp(argv[1], "status"))
-		xsens::info();
+		rpm_arduino::info();
 
 out:
-	errx(1, "unrecognized command, try 'start', 'stop', 'test', 'reset' or 'status' [-d /dev/ttyS0-n]");
+	errx(1, "unrecognized command, try 'start', 'stop', 'test', 'reset' or 'status' [-d /dev/ttyS3-n]");
 }
