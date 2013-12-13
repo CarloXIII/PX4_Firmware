@@ -9,26 +9,6 @@
  * @file rpm_arduino_helper.cpp
  */
 
-float
-RPM_ARDUINO_Helper::get_update_rate()
-{
-	return _rate_measurement;
-}
-
-float
-RPM_ARDUINO_Helper::reset_update_rates()
-{
-	_rate_count = 0;
-	_rate_measurement = 0;
-	_interval_rate_start = hrt_absolute_time();
-}
-
-float
-RPM_ARDUINO_Helper::store_update_rates()
-{
-	_rate_measurement = _rate_count / (((float)(hrt_absolute_time() - _interval_rate_start)) / 1000000.0f);
-}
-
 int
 RPM_ARDUINO_Helper::set_baudrate(const int &fd, unsigned baud)
 {

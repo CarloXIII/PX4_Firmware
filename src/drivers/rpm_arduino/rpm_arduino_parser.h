@@ -8,8 +8,8 @@
 #include <drivers/drv_rpm.h>
 
 #define RPM_PRE 0x55
-
 #define RPM_ARDUINO_BAUDRATE 57600
+#define RPM_ARDUINO_RECV_BUFFER_SIZE 8	// minimum size of one message
 
 
 typedef enum {
@@ -21,10 +21,9 @@ typedef enum {
 
 /** the structures of the binary packets */
 #pragma pack(push, 1)
-
 #pragma pack(pop)
 
-#define RPM_ARDUINO_RECV_BUFFER_SIZE 10
+
 
 class RPM_ARDUINO_PARSER : public RPM_ARDUINO_Helper
 {
@@ -60,10 +59,9 @@ private:
 	rpm_arduino_decode_state_t	_decode_state;
 	uint8_t				_rpm_arduino_revision;
 	uint8_t 			rpm_arduino_last_bgps;
-
 	uint8_t				_rx_header_lgth;
 	unsigned			_rx_message_lgth;
-	uint8_t				_rx_buffer[RPM_ARDUINO_RECV_BUFFER_SIZE];
+	uint8_t				_rx_buffer[RPM_ARDUINO_RECV_BUFFER_SIZE]; // for one message
 	unsigned			_rx_count;
 	unsigned long		_calculated_checksum;
 

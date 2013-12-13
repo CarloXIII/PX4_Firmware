@@ -33,8 +33,9 @@
 #include "rpm_arduino_parser.h"
 //#include "drivers/drv_rpm.h"
 
-#define TIMEOUT_5HZ 500
+#define TIMEOUT_2HZ 500000
 #define RATE_MEASUREMENT_PERIOD 5000000
+#define RPM_DEBUG FALSE
 
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
@@ -53,38 +54,24 @@ class RPM_ARDUINO : public device::CDev
 public:
 	RPM_ARDUINO(const char* uart_path);
 	virtual ~RPM_ARDUINO();
-
 	virtual int			init();
-
 	virtual int			ioctl(struct file *filp, int cmd, unsigned long arg);
 
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
 	void				print_info();
 	void				print_status();
 
 private:
-
 	bool				_task_should_exit;				///< flag to make the main worker task exit
-	int					_serial_fd;						///< serial interface to XSENS
+	int					_serial_fd;						///< file descriptor
 	unsigned			_baudrate;						///< current baudrate
 	char				_port[20];						///< device / serial port path
 	volatile int		_task;							///< worker task
-	bool				_healthy;						///< flag to signal if the XSENS is ok
-	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the XSENS has changed
-	bool				_mode_changed;					///< flag that the XSENS mode has changed
-	RPM_ARDUINO_Helper	*_Helper;						///< instance of XSENS parser
-	struct rpm_report 	_report;						///< uORB topic for xsens gps position
-	orb_advert_t		_report_pub;					///< uORB pub for gps position
-	//orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
-	float				_rate;							///< position update rate
+	bool				_healthy;						///< flag to signal if the Arduino is present
+	RPM_ARDUINO_Helper	*_Helper;						///< instance of RPM parser
+	struct rpm_report 	_report;						///< uORB topic
+	orb_advert_t		_report_pub;					///< uORB pub
+	float				_rate;							///< measurement update rate
 
-
-	/**
-	 * Try to configure the XSENS, handle outgoing communication to the XSENS
-	 */
-	void				config();
 
 	/**
 	 * Trampoline to the worker task
@@ -92,18 +79,15 @@ private:
 	static void			task_main_trampoline(void *arg);
 
 
-	/**
-	 * Worker task: main XSENS thread that configures the XSENS and parses incoming data, always running
-	 */
 	void				task_main(void);
 
 	/**
-	 * Set the baudrate of the UART to the XSENS
+	 * Set the baudrate of the UART
 	 */
 	int				set_baudrate(unsigned baud);
 
 	/**
-	 * Send a reset command to the XSENS
+	 * Send a reset command (not implemented
 	 */
 	void				cmd_reset();
 
@@ -117,7 +101,6 @@ extern "C" __EXPORT int rpm_arduino_main(int argc, char *argv[]);
 
 namespace
 {
-
 RPM_ARDUINO	*g_dev;
 
 }
@@ -127,10 +110,8 @@ RPM_ARDUINO::RPM_ARDUINO(const char* uart_path) :
 	CDev("rpm_arduino", RPM_ARDUINO_DEVICE_PATH),
 	_task_should_exit(false),
 	_healthy(false),
-	_mode_changed(false),
 	_Helper(nullptr),
 	_report_pub(-1),
-	//_report_pub_sensor_combined(-1),
 	_rate(0.0f)
 {
 	/* store port name */
@@ -141,7 +122,7 @@ RPM_ARDUINO::RPM_ARDUINO(const char* uart_path) :
 	/* we need this potentially before it could be set in task_main */
 	g_dev = this;
 	memset(&_report, 0, sizeof(_report));
-	_debug_enabled = true;
+	_debug_enabled = RPM_DEBUG;
 }
 
 RPM_ARDUINO::~RPM_ARDUINO()
@@ -154,7 +135,6 @@ RPM_ARDUINO::~RPM_ARDUINO()
 		/* give it another 100ms */
 		usleep(100000);
 	}
-
 	/* well, kill it anyway, though this will probably crash */
 	if (_task != -1)
 		task_delete(_task);
@@ -171,14 +151,13 @@ RPM_ARDUINO::init()
 	if (CDev::init() != OK)
 		goto out;
 
-	/* start the XSENS driver worker task */
+	/* start the driver worker task */
 	_task = task_create("rpm_arduino", SCHED_PRIORITY_SLOW_DRIVER, 2048, (main_t)&RPM_ARDUINO::task_main_trampoline, nullptr);
 
 	if (_task < 0) {
 		warnx("task start failed: %d", errno);
 		return -errno;
 	}
-
 	ret = OK;
 out:
 	return ret;
@@ -234,23 +213,14 @@ RPM_ARDUINO::task_main()
 			/* set to zero to ensure parser is not used while not instantiated */
 			_Helper = nullptr;
 		}
-
-
 		_Helper = new RPM_ARDUINO_PARSER(_serial_fd, &_report);
-
-		//warnx("xsens: task main started");
-
 		unlock();
 		if (_Helper->configure(_baudrate) == 0) {
 			unlock();
 
-			// XSENS is obviously detected successfully, reset statistics
-			_Helper->reset_update_rates();
-			//warnx("xsens detected");
-
-			while (_Helper->receive(TIMEOUT_5HZ) > 0 && !_task_should_exit) {
+			// RPM sensor detected
+			while (_Helper->receive(TIMEOUT_2HZ) > 0 && !_task_should_exit) {
 //				lock();
-				//warnx("xsens: receive");
 				/* opportunistic publishing - else invalid data would end up on the bus */
 				if (_report_pub > 0) {
 					if(_Helper->rpm_arduino_new_data == true){
@@ -261,7 +231,6 @@ RPM_ARDUINO::task_main()
 					_report_pub = orb_advertise(ORB_ID(sensor_rpm), &_report);
 				}
 
-
 				last_rate_count++;
 
 				/* measure update rate every 5 seconds */
@@ -269,8 +238,6 @@ RPM_ARDUINO::task_main()
 					_rate = last_rate_count / ((float)((hrt_absolute_time() - last_rate_measurement)) / 1000000.0f);
 					last_rate_measurement = hrt_absolute_time();
 					last_rate_count = 0;
-					_Helper->store_update_rates();
-					_Helper->reset_update_rates();
 				}
 
 				if (!_healthy) {
@@ -288,11 +255,9 @@ RPM_ARDUINO::task_main()
 		}
 		lock();
 
-	}
+	} //end while
 	debug("exiting");
-
 	::close(_serial_fd);
-
 	/* tell the dtor that we are exiting */
 	_task = -1;
 	_exit(0);
@@ -303,7 +268,7 @@ RPM_ARDUINO::task_main()
 void
 RPM_ARDUINO::cmd_reset()
 {
-	//XXX add reset?
+	//XXX not implemented
 }
 
 void
@@ -321,13 +286,6 @@ RPM_ARDUINO::print_status()
 	printf("\nRPM: %.3f", _report.rpm);
 	printf("\ntime since last update [s]: %.3f", ((float)((hrt_absolute_time() - _report.timestamp)) / 1000000.0f) );
 	printf("\nrpm package rate: %.3f", _rate );
-	printf("ubdate rate: \t%6.2f Hz", (double)_Helper->get_update_rate());
-	//printf("\ngps data age (bGPS): %.3f", xsens_gps_pvt->bgps );
-
-	//xsens::_
-	//errx(0, "PASS");
-	//errx(0, "PASS");
-	//("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
 
 	usleep(100000);
 }
@@ -337,7 +295,6 @@ RPM_ARDUINO::print_status()
  */
 namespace rpm_arduino
 {
-
 RPM_ARDUINO	*g_dev;
 
 void	start(const char *uart_path);

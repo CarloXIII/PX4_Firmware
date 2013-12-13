@@ -16,9 +16,6 @@ public:
 	virtual int			configure(unsigned &baud) = 0;
 	virtual int 		receive(unsigned timeout) = 0;
 	int 				set_baudrate(const int &fd, unsigned baud);
-	float				get_update_rate();
-	float				reset_update_rates();
-	float				store_update_rates();
 	bool				rpm_arduino_new_data;
 protected:
 
