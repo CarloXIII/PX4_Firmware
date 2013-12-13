@@ -56,10 +56,10 @@ struct manual_control_setpoint_s {
 	float yaw;				/**< rudder / yaw rate / yaw */
 	float throttle;				/**< throttle / collective thrust / altitude */
 
-	float mode_switch;			/**< mode 3 position switch (mandatory): manual, assisted, auto */
-	float return_switch;			/**< land 2 position switch (mandatory): land, no effect */
-	float assisted_switch;			/**< assisted 2 position switch (optional): seatbelt, simple */
-	float mission_switch;		/**< mission 2 position switch (optional): mission, loiter */
+	float mode_switch;			/**< mode 3 position switch (mandatory): manual, assisted, auto  	channel 5 */
+	float return_switch;			/**< land 2 position switch (mandatory): land, no effect   		channel 8 	*/
+	float assisted_switch;			/**< assisted 2 position switch (optional): seatbelt, simple 	channel 6 */
+	float mission_switch;		/**< mission 2 position switch (optional): mission, loiter 			channel 7 */
 
 	/**
 	 * Any of the channels below may not be available and be set to NaN

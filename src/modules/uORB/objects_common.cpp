@@ -60,6 +60,9 @@ ORB_DEFINE(sensor_baro, struct baro_report);
 #include <drivers/drv_range_finder.h>
 ORB_DEFINE(sensor_range_finder, struct range_finder_report);
 
+#include <drivers/drv_rpm.h>
+ORB_DEFINE(sensor_rpm, struct rpm_report);
+
 #include <drivers/drv_current_sensor.h>
 ORB_DEFINE(sensor_current_sensor, struct current_sensor_report);
 

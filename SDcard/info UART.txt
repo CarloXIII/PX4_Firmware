@@ -1,0 +1,4 @@
+ttyS0 	UART1 	
+ttyS1 	UART2 	
+ttyS2 	UART5 	
+ttyS3 	UART6 	

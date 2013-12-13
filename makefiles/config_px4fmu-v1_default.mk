@@ -40,6 +40,7 @@ MODULES		+= drivers/meas_airspeed
 MODULES		+= modules/sensors
 MODULES     += drivers/xsens
 MODULES		+= drivers/current_sensor
+MODULES		+= drivers/rpm_arduino
 
 #
 # System commands
@@ -69,6 +70,7 @@ MODULES		+= modules/navigator
 MODULES		+= modules/mavlink
 MODULES		+= modules/mavlink_onboard
 MODULES		+= modules/gpio_led
+MODULES		+= modules/governor_control
 
 #
 # Estimation modules (EKF / other filters)

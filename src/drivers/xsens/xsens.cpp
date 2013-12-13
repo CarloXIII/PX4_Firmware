@@ -64,7 +64,7 @@
 #include <uORB/topics/xsens_vehicle_gps_position.h>
 
 #include "xsens_parser.h"
-
+#include <drivers/drv_rpm.h>
 
 #define TIMEOUT_5HZ 500
 #define RATE_MEASUREMENT_PERIOD 5000000
