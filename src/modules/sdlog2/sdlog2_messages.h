@@ -382,7 +382,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(ATTC, "Qffff", "Time,Roll,Pitch,Yaw,Thrust"),
 	LOG_FORMAT(STAT, "QBBBfffBB", "Time,MainState,NavState,ArmState,BatV,BatC,BatRem,BatWarn,Landed"),
 	LOG_FORMAT(RC, "Qffffffff", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7"),
-	LOG_FORMAT(OUT0, "Qffffffff", "TimeOut0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
+	LOG_FORMAT(OUT0, "Qffffffff", "Time,Out0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
 	LOG_FORMAT(AIRS, "Qff", "Time,IndSpeed,TrueSpeed"),
 	LOG_FORMAT(ARSP, "Qfff", "Time,RollRateSP,PitchRateSP,YawRateSP"),
 	LOG_FORMAT(FLOW, "QhhfffBB", "Time,RawX,RawY,CompX,CompY,Dist,Q,SensID"),

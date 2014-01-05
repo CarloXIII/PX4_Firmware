@@ -17,6 +17,7 @@ fi
 # Start the ORB (first app to start)
 #
 uorb start
+usleep 5000
  
 #
 # Load microSD params
@@ -40,22 +41,10 @@ uorb start
 		fi
 	fi
 #fi
- 
-#
-# Start system state indicator
-#
-if rgbled start
-then
-	echo "Using external RGB Led"
-else
-	if blinkm start
-	then
-		blinkm systemstate
-	fi
-fi
- 
+  
 # Try to get an USB console
 nshterm /dev/ttyACM0 &
+usleep 5000
  
 #
 # Do not exit the shell per default
@@ -69,37 +58,75 @@ set EXIT_ON_END no
 mavlink start -d /dev/ttyS1 -b 57600
 usleep 5000
 
+#
+# Start the commander.
+#
+commander start
+
 sh /etc/init.d/rc.io
+usleep 5000
  
 #
 # Start the sensors and test them.
 #
 sh /etc/init.d/rc.sensors
+usleep 5000
  
-#
-# Start the commander.
-#
-commander start
+
  
 #
 # Start XSENS interface
 #
-xsens start
-usleep 2000
+#xsens start
+#usleep 5000
 
 #
-# Start the attitude estimator
-#
-#attitude_estimator_ekf start
- 
-#
-# Start the attitude position estimator
+# Start the attitude estimator or attitude position estimator
+# Use attitude position estimator only if Xsens is connected
 # This is the internal Kalman Filter of the PX4
 #
-att_pos_estimator_ekf start
+attitude_estimator_ekf start
+#att_pos_estimator_ekf start
 usleep 5000
+
+#
+# Set PWM values for typical ESCs
+#
+pwm rate -a -r 70
+pwm min -a -p 953
+pwm max -a -p 2087
+
+#
+# Load mixer
+#
+mixer load /dev/pwm_output /etc/mixers/IO_para.mix
+usleep 5000
+
+#
+# Start position estimator
+#
+position_estimator_inav start
+usleep 5000
+
+#
+# Start controller
+#
+fw_att_control start
+usleep 5000
+
+#
+# Start MAX127 ADC
+# This is used to measure the relative angle between vehicle and paraglider
+#
+#max127 start
+#usleep 5000
  
 #
-# Start Data logging with 50Hz
+# Start Data logging with 100Hz
 #
-sdlog2 start -r 50 -e
+sdlog2 start -r 100 -a
+
+if [ $EXIT_ON_END == yes ]
+then
+	exit
+fi

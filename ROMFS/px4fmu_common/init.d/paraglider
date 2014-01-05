@@ -90,9 +90,16 @@ attitude_estimator_ekf start
 usleep 5000
 
 #
+# Set PWM values for typical ESCs
+#
+pwm rate -a -r 70
+pwm min -a -p 953
+pwm max -a -p 2087
+
+#
 # Load mixer
 #
-mixer load /dev/pwm_output /etc/mixers/IO_test.mix
+mixer load /dev/pwm_output /etc/mixers/IO_para.mix
 usleep 5000
 
 #
