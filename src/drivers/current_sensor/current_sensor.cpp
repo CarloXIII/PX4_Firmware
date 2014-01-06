@@ -204,7 +204,7 @@ private:
 extern "C" __EXPORT int current_sensor_main(int argc, char *argv[]);
 
 MB12XX::MB12XX(int bus, int address) :
-	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 100000),
+	I2C("MB12xx", CURRENT_SENSOR_DEVICE_PATH, bus, address, 100000),	//busclock 100kHz
 	_min_distance(MB12XX_MIN_DISTANCE),
 	_max_distance(MB12XX_MAX_DISTANCE),
 	_reports(nullptr),
@@ -544,6 +544,7 @@ MB12XX::collect()
 	}
 
 	struct current_sensor_report report;
+
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
         report.error_count = perf_event_count(_comms_errors);
@@ -575,7 +576,7 @@ MB12XX::collect()
 
 
 
-
+	/*
 	// Check
 	uint8_t cmdxx = {PIOS_AD7998_CONF_REG};
 	transfer(&cmdxx, 1, nullptr, 0);
@@ -584,6 +585,7 @@ MB12XX::collect()
 	transfer(nullptr, 0, &readback[0], 2);
 	report.valid = readback[0] << 8 | readback[1];
 	usleep(MB12XX_CONVERSION_INTERVAL);
+	*/
 
 	//report.valid = si_units > get_minimum_distance() && si_units < get_maximum_distance() ? 1 : 0;
 
@@ -617,7 +619,7 @@ MB12XX::start()
 	int i;
 	uint8_t cmd [3] = {PIOS_AD7998_CONF_REG, (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) >> 8), (uint8_t)((PIOS_AD7998_CONF_CH_ALL | PIOS_AD7998_CONF_FLTR) & 0x0ff)};		//Configreg: 0bxxxx111111111101
 	for(i=0; i<5;i++){
-	ret = transfer(&cmd[0], 3, nullptr, 0);
+	//ret = transfer(&cmd[0], 3, nullptr, 0);
 	usleep(MB12XX_CONVERSION_INTERVAL);
 	if (OK != ret)
 	{
@@ -629,7 +631,7 @@ MB12XX::start()
 	// Check
 	usleep(MB12XX_CONVERSION_INTERVAL);
 	uint8_t readback [2] = {0,0};
-	ret = transfer(nullptr, 0, &readback[0], 2);
+	//ret = transfer(nullptr, 0, &readback[0], 2);
 	if (readback[1] != cmd[2] || readback[0] != cmd[1]){
 		log("Readback from Configuration Register is not the same: \t"BYTETOBINARYPATTERN BYTETOBINARYPATTERN, BYTETOBINARY(readback[0]),BYTETOBINARY(readback[1]));
 
