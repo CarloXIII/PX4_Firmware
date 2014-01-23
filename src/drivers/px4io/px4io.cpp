@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +35,7 @@
  * @file px4io.cpp
  * Driver for the PX4IO board.
  *
- * PX4IO is connected via I2C.
+ * PX4IO is connected via I2C or DMA enabled high-speed UART.
  */
 
 #include <nuttx/config.h>
@@ -270,7 +270,8 @@ private:
 	orb_advert_t		_to_servorail;		///< servorail status
 	orb_advert_t		_to_safety;		///< status of safety
 
-	actuator_outputs_s	_outputs;		///<mixed outputs
+	actuator_outputs_s	_outputs;		///< mixed outputs
+	servorail_status_s	_servorail_status;	///< servorail status
 
 	bool			_primary_pwm_device;	///< true if we are the default PWM output
 
@@ -505,6 +506,7 @@ PX4IO::PX4IO(device::Device *interface) :
 	_mavlink_fd = ::open(MAVLINK_LOG_DEVICE, 0);
 
 	_debug_enabled = true;
+	_servorail_status.rssi_v = 0;
 }
 
 PX4IO::~PX4IO()
@@ -1300,6 +1302,7 @@ PX4IO::io_handle_battery(uint16_t vbatt, uint16_t ibatt)
 
 	/* voltage is scaled to mV */
 	battery_status.voltage_v = vbatt / 1000.0f;
+	battery_status.voltage_filtered_v = vbatt / 1000.0f;
 
 	/*
 	  ibatt contains the raw ADC count, as 12 bit ADC
@@ -1331,19 +1334,18 @@ PX4IO::io_handle_battery(uint16_t vbatt, uint16_t ibatt)
 void
 PX4IO::io_handle_vservo(uint16_t vservo, uint16_t vrssi)
 {
-	servorail_status_s servorail_status;
-	servorail_status.timestamp = hrt_absolute_time();
+	_servorail_status.timestamp = hrt_absolute_time();
 
 	/* voltage is scaled to mV */
-	servorail_status.voltage_v = vservo * 0.001f;
-	servorail_status.rssi_v    = vrssi * 0.001f;
+	_servorail_status.voltage_v = vservo * 0.001f;
+	_servorail_status.rssi_v    = vrssi * 0.001f;
 
 	/* lazily publish the servorail voltages */
 	if (_to_servorail > 0) {
-		orb_publish(ORB_ID(servorail_status), _to_servorail, &servorail_status);
+		orb_publish(ORB_ID(servorail_status), _to_servorail, &_servorail_status);
 
 	} else {
-		_to_servorail = orb_advertise(ORB_ID(servorail_status), &servorail_status);
+		_to_servorail = orb_advertise(ORB_ID(servorail_status), &_servorail_status);
 	}
 }
 
@@ -1449,6 +1451,11 @@ PX4IO::io_publish_raw_rc()
 	} else {
 		rc_val.input_source = RC_INPUT_SOURCE_UNKNOWN;
 	}
+
+	/* set RSSI */
+
+	// XXX the correct scaling needs to be validated here
+	rc_val.rssi = (_servorail_status.rssi_v / 3.3f) * UINT8_MAX;
 
 	/* lazily advertise on first publication */
 	if (_to_input_rc == 0) {
@@ -1689,6 +1696,9 @@ PX4IO::mixer_send(const char *buf, unsigned buflen, unsigned retries)
 		msg->text[1] = '\0';
 
 		int ret = io_reg_set(PX4IO_PAGE_MIXERLOAD, 0, (uint16_t *)frame, (sizeof(px4io_mixdata) + 2) / 2);
+
+		if (ret)
+			return ret;
 
 		retries--;
 
@@ -2420,6 +2430,69 @@ detect(int argc, char *argv[])
 }
 
 void
+checkcrc(int argc, char *argv[])
+{
+	bool keep_running = false;
+
+	if (g_dev == nullptr) {
+		/* allocate the interface */
+		device::Device *interface = get_interface();
+
+		/* create the driver - it will set g_dev */
+		(void)new PX4IO(interface);
+
+		if (g_dev == nullptr)
+			errx(1, "driver alloc failed");
+	} else {
+		/* its already running, don't kill the driver */
+		keep_running = true;
+	}
+
+	/*
+	  check IO CRC against CRC of a file
+	 */
+	if (argc < 2) {
+		printf("usage: px4io checkcrc filename\n");
+		exit(1);
+	}
+	int fd = open(argv[1], O_RDONLY);
+	if (fd == -1) {
+		printf("open of %s failed - %d\n", argv[1], errno);
+		exit(1);			
+	}
+	const uint32_t app_size_max = 0xf000;
+	uint32_t fw_crc = 0;
+	uint32_t nbytes = 0;
+	while (true) {
+		uint8_t buf[16];
+		int n = read(fd, buf, sizeof(buf));
+		if (n <= 0) break;
+		fw_crc = crc32part(buf, n, fw_crc);
+		nbytes += n;
+	}
+	close(fd);
+	while (nbytes < app_size_max) {
+		uint8_t b = 0xff;
+		fw_crc = crc32part(&b, 1, fw_crc);			
+		nbytes++;
+	}
+
+	int ret = g_dev->ioctl(nullptr, PX4IO_CHECK_CRC, fw_crc);
+
+	if (!keep_running) {
+		delete g_dev;
+		g_dev = nullptr;
+	}
+
+	if (ret != OK) {
+		printf("check CRC failed - %d\n", ret);
+		exit(1);			
+	}
+	printf("CRCs match\n");
+	exit(0);
+}
+
+void
 bind(int argc, char *argv[])
 {
 	int pulses;
@@ -2613,6 +2686,9 @@ px4io_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "detect"))
 		detect(argc - 1, argv + 1);
 
+	if (!strcmp(argv[1], "checkcrc"))
+		checkcrc(argc - 1, argv + 1);
+
 	if (!strcmp(argv[1], "update")) {
 
 		if (g_dev != nullptr) {
@@ -2795,49 +2871,6 @@ px4io_main(int argc, char *argv[])
 		}
 
 		printf("SET_DEBUG %u OK\n", (unsigned)level);
-		exit(0);
-	}
-
-	if (!strcmp(argv[1], "checkcrc")) {
-		/*
-		  check IO CRC against CRC of a file
-		 */
-		if (argc <= 2) {
-			printf("usage: px4io checkcrc filename\n");
-			exit(1);
-		}
-		if (g_dev == nullptr) {
-			printf("px4io is not started\n");
-			exit(1);
-		}
-		int fd = open(argv[2], O_RDONLY);
-		if (fd == -1) {
-			printf("open of %s failed - %d\n", argv[2], errno);
-			exit(1);			
-		}
-		const uint32_t app_size_max = 0xf000;
-		uint32_t fw_crc = 0;
-		uint32_t nbytes = 0;
-		while (true) {
-			uint8_t buf[16];
-			int n = read(fd, buf, sizeof(buf));
-			if (n <= 0) break;
-			fw_crc = crc32part(buf, n, fw_crc);
-			nbytes += n;
-		}
-		close(fd);
-		while (nbytes < app_size_max) {
-			uint8_t b = 0xff;
-			fw_crc = crc32part(&b, 1, fw_crc);			
-			nbytes++;
-		}
-
-		int ret = g_dev->ioctl(nullptr, PX4IO_CHECK_CRC, fw_crc);
-		if (ret != OK) {
-			printf("check CRC failed - %d\n", ret);
-			exit(1);			
-		}
-		printf("CRCs match\n");
 		exit(0);
 	}
 
