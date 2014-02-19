@@ -17,6 +17,7 @@
 .~lock.*
 Archives/*
 Build/*
+NuttX/*
 core
 cscope.out
 dot.gdbinit
