@@ -12,6 +12,6 @@
 #
 
 MODULE_COMMAND		= current_sensor
-MODULE_STACKSIZE	= 4096
+MODULE_STACKSIZE	= 2048
 
 SRCS			= current_sensor.cpp

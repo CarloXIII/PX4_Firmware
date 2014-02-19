@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -316,7 +316,7 @@ private:
 };
 
 L3GD20::L3GD20(int bus, const char* path, spi_dev_e device) :
-	SPI("L3GD20", path, bus, device, SPIDEV_MODE3, 8000000),
+	SPI("L3GD20", path, bus, device, SPIDEV_MODE3, 11*1000*1000 /* will be rounded to 10.4 MHz, within margins for L3GD20 */),
 	_call_interval(0),
 	_reports(nullptr),
 	_gyro_range_scale(0.0f),
@@ -379,14 +379,23 @@ L3GD20::init()
 		goto out;
 
 	_class_instance = register_class_devname(GYRO_DEVICE_PATH);
-        if (_class_instance == CLASS_DEVICE_PRIMARY) {
-		/* advertise sensor topic */
-		struct gyro_report zero_report;
-		memset(&zero_report, 0, sizeof(zero_report));
-		_gyro_topic = orb_advertise(ORB_ID(sensor_gyro), &zero_report);
-        }
 
 	reset();
+
+	measure();
+
+	if (_class_instance == CLASS_DEVICE_PRIMARY) {
+
+		/* advertise sensor topic, measure manually to initialize valid report */
+		struct gyro_report grp;
+		_reports->get(&grp);
+
+		_gyro_topic = orb_advertise(ORB_ID(sensor_gyro), &grp);
+
+		if (_gyro_topic < 0)
+			debug("failed to create sensor_gyro publication");
+
+	}
 
 	ret = OK;
 out:
@@ -779,10 +788,16 @@ L3GD20::measure_trampoline(void *arg)
 	dev->measure();
 }
 
+#ifdef GPIO_EXTI_GYRO_DRDY
+# define L3GD20_USE_DRDY 1
+#else
+# define L3GD20_USE_DRDY 0
+#endif
+
 void
 L3GD20::measure()
 {
-#ifdef GPIO_EXTI_GYRO_DRDY
+#if L3GD20_USE_DRDY
 	// if the gyro doesn't have any data ready then re-schedule
 	// for 100 microseconds later. This ensures we don't double
 	// read a value and then miss the next value
@@ -815,8 +830,8 @@ L3GD20::measure()
 	raw_report.cmd = ADDR_OUT_TEMP | DIR_READ | ADDR_INCREMENT;
 	transfer((uint8_t *)&raw_report, (uint8_t *)&raw_report, sizeof(raw_report));
 
-#ifdef GPIO_EXTI_GYRO_DRDY
-        if (raw_report.status & 0xF != 0xF) {
+#if L3GD20_USE_DRDY
+        if ((raw_report.status & 0xF) != 0xF) {
             /*
               we waited for DRDY, but did not see DRDY on all axes
               when we captured. That means a transfer error of some sort
@@ -888,8 +903,10 @@ L3GD20::measure()
 	poll_notify(POLLIN);
 
 	/* publish for subscribers */
-	if (_gyro_topic > 0)
+	if (_gyro_topic > 0 && !(_pub_blocked)) {
+		/* publish it */
 		orb_publish(ORB_ID(sensor_gyro), _gyro_topic, &report);
+	}
 
 	_read++;
 
@@ -902,6 +919,8 @@ L3GD20::print_info()
 {
 	printf("gyro reads:          %u\n", _read);
 	perf_print_counter(_sample_perf);
+	perf_print_counter(_reschedules);
+	perf_print_counter(_errors);
 	_reports->print_info("report queue");
 }
 
