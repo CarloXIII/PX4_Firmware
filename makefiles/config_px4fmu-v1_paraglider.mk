@@ -1,5 +1,6 @@
 #
 # Makefile for the px4fmu_paraglider configuration
+# It's almost the same, like the px4fmu-v1_default.mk with additional modules
 #
 
 #

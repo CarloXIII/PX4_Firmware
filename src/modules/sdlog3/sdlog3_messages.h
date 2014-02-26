@@ -38,6 +38,7 @@
  * Log messages and structures definition.
  *
  * @author Anton Babushkin <anton.babushkin@me.com>
+ * @author Lukas Koepfli added some data
  */
 
 #ifndef SDLOG3_MESSAGES_H_
@@ -51,6 +52,7 @@
 /* --- ATT - ATTITUDE --- */
 #define LOG_ATT_MSG 2
 struct log_ATT_s {
+	uint64_t t;
 	float roll;
 	float pitch;
 	float yaw;
@@ -62,6 +64,7 @@ struct log_ATT_s {
 /* --- ATSP - ATTITUDE SET POINT --- */
 #define LOG_ATSP_MSG 3
 struct log_ATSP_s {
+	uint64_t t;
 	float roll_sp;
 	float pitch_sp;
 	float yaw_sp;
@@ -71,6 +74,7 @@ struct log_ATSP_s {
 /* --- IMU - IMU SENSORS --- */
 #define LOG_IMU_MSG 4
 struct log_IMU_s {
+	uint64_t t;
 	float acc_x;
 	float acc_y;
 	float acc_z;
@@ -85,6 +89,7 @@ struct log_IMU_s {
 /* --- SENS - OTHER SENSORS --- */
 #define LOG_SENS_MSG 5
 struct log_SENS_s {
+	uint64_t t;
 	float baro_pres;
 	float baro_alt;
 	float baro_temp;
@@ -94,6 +99,7 @@ struct log_SENS_s {
 /* --- LPOS - LOCAL POSITION --- */
 #define LOG_LPOS_MSG 6
 struct log_LPOS_s {
+	uint64_t t;
 	float x;
 	float y;
 	float z;
@@ -124,9 +130,11 @@ struct log_GPS_s {
 	uint8_t fix_type;
 	float eph;
 	float epv;
+	uint64_t t_p;
 	int32_t lat;
 	int32_t lon;
 	float alt;
+	uint64_t t_v;
 	float vel_n;
 	float vel_e;
 	float vel_d;
@@ -136,6 +144,7 @@ struct log_GPS_s {
 /* --- ATTC - ATTITUDE CONTROLS (ACTUATOR_0 CONTROLS)--- */
 #define LOG_ATTC_MSG 9
 struct log_ATTC_s {
+	uint64_t t;
 	float roll;
 	float pitch;
 	float yaw;
@@ -145,6 +154,7 @@ struct log_ATTC_s {
 /* --- STAT - VEHICLE STATE --- */
 #define LOG_STAT_MSG 10
 struct log_STAT_s {
+	uint64_t t;
 	uint8_t main_state;
 	uint8_t navigation_state;
 	uint8_t arming_state;
@@ -156,6 +166,7 @@ struct log_STAT_s {
 /* --- RC - RC INPUT CHANNELS --- */
 #define LOG_RC_MSG 11
 struct log_RC_s {
+	uint64_t t;
 	float channel[8];
 	uint8_t channel_count;
 };
@@ -163,12 +174,14 @@ struct log_RC_s {
 /* --- OUT0 - ACTUATOR_0 OUTPUT --- */
 #define LOG_OUT0_MSG 12
 struct log_OUT0_s {
+	uint64_t t;
 	float output[8];
 };
 
 /* --- AIRS - AIRSPEED --- */
 #define LOG_AIRS_MSG 13
 struct log_AIRS_s {
+	uint64_t t;
 	float indicated_airspeed;
 	float true_airspeed;
 };
@@ -176,6 +189,7 @@ struct log_AIRS_s {
 /* --- ARSP - ATTITUDE RATE SET POINT --- */
 #define LOG_ARSP_MSG 14
 struct log_ARSP_s {
+	uint64_t t;
 	float roll_rate_sp;
 	float pitch_rate_sp;
 	float yaw_rate_sp;
@@ -184,6 +198,7 @@ struct log_ARSP_s {
 /* --- FLOW - OPTICAL FLOW --- */
 #define LOG_FLOW_MSG 15
 struct log_FLOW_s {
+	uint64_t t;
 	int16_t flow_raw_x;
 	int16_t flow_raw_y;
 	float flow_comp_x;
@@ -196,6 +211,7 @@ struct log_FLOW_s {
 /* --- GPOS - GLOBAL POSITION ESTIMATE --- */
 #define LOG_GPOS_MSG 16
 struct log_GPOS_s {
+	uint64_t t;
 	int32_t lat;
 	int32_t lon;
 	float alt;
@@ -224,6 +240,7 @@ struct log_GPSP_s {
 /* --- ESC - ESC STATE --- */
 #define LOG_ESC_MSG 18
 struct log_ESC_s {
+	uint64_t t;
 	uint16_t counter;
 	uint8_t esc_count;
 	uint8_t esc_connectiontype;
@@ -249,10 +266,91 @@ struct log_GVSP_s {
 /* --- BATT - BATTERY --- */
 #define LOG_BATT_MSG 20
 struct log_BATT_s {
+	uint64_t t;
 	float voltage;
 	float voltage_filtered;
 	float current;
 	float discharged;
+};
+
+/*
+ * TODO NEW ENTRY
+ * Put here your own log messages and structures definition,
+ * as you see above.
+ */
+
+/* --- XIMU - XSENS IMU SENSORS --- */
+#define LOG_XIMU_MSG 20
+struct log_XIMU_s {
+	uint64_t t;
+	float acc_x;
+	float acc_y;
+	float acc_z;
+	float gyro_x;
+	float gyro_y;
+	float gyro_z;
+	float mag_x;
+	float mag_y;
+	float mag_z;
+};
+
+/* --- XSEN - XSENS OTHER SENSORS --- */
+#define LOG_XSEN_MSG 21
+struct log_XSEN_s {
+	float baro_pres;
+	float baro_alt;
+	float baro_temp;
+	float diff_pres;
+};
+
+/* --- XGPS - XSENS GPS POSITION --- */
+#define LOG_XGPS_MSG 22
+struct log_XGPS_s {
+	uint64_t gps_time;
+	uint8_t fix_type;
+	float eph;
+	float epv;
+	uint64_t t_p;
+	int32_t lat;
+	int32_t lon;
+	float alt;
+	uint64_t t_v;
+	float vel_n;
+	float vel_e;
+	float vel_d;
+	float cog;
+};
+
+/* --- XATT - XSENS ATTITUDE --- */
+#define LOG_XATT_MSG 23
+struct log_XATT_s {
+	uint64_t t;
+	float roll;
+	float pitch;
+	float yaw;
+	float roll_rate;
+	float pitch_rate;
+	float yaw_rate;
+};
+
+/* --- XGPO - XSENS GLOBAL POSITION ESTIMATE --- */
+#define LOG_XGPO_MSG 24
+struct log_XGPO_s {
+	uint64_t t;
+	int32_t lat;
+	int32_t lon;
+	float alt;
+	float vel_n;
+	float vel_e;
+	float vel_d;
+};
+
+/* --- RANG - RELATIVE ANGLE --- */
+#define LOG_RANG_MSG 25
+struct log_RANG_s {
+	uint64_t t;
+	float ang_l;
+	float ang_r;
 };
 
 /* --- TIME - TIME STAMP --- */
@@ -280,25 +378,35 @@ struct log_PARM_s {
 /* construct list of all message formats */
 static const struct log_format_s log_formats[] = {
 	/* business-level messages, ID < 0x80 */
-	LOG_FORMAT(ATT, "ffffff", "Roll,Pitch,Yaw,RollRate,PitchRate,YawRate"),
-	LOG_FORMAT(ATSP, "ffff", "RollSP,PitchSP,YawSP,ThrustSP"),
-	LOG_FORMAT(IMU, "fffffffff", "AccX,AccY,AccZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ"),
-	LOG_FORMAT(SENS, "ffff", "BaroPres,BaroAlt,BaroTemp,DiffPres"),
-	LOG_FORMAT(LPOS, "ffffffLLfBBB", "X,Y,Z,VX,VY,VZ,RefLat,RefLon,RefAlt,XYFlags,ZFlags,Landed"),
+	LOG_FORMAT(ATT, "Qffffff", "Time,Roll,Pitch,Yaw,RollRate,PitchRate,YawRate"),
+	LOG_FORMAT(ATSP, "Qffff", "Time,RollSP,PitchSP,YawSP,ThrustSP"),
+	LOG_FORMAT(IMU, "Qfffffffff", "Time,AccX,AccY,AccZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ"),
+	LOG_FORMAT(SENS, "Qffff", "Time,BaroPres,BaroAlt,BaroTemp,DiffPres"),
+	LOG_FORMAT(LPOS, "QffffffLLfBBB", "Time,X,Y,Z,VX,VY,VZ,RefLat,RefLon,RefAlt,XYFlags,ZFlags,Landed"),
 	LOG_FORMAT(LPSP, "ffff", "X,Y,Z,Yaw"),
-	LOG_FORMAT(GPS, "QBffLLfffff", "GPSTime,FixType,EPH,EPV,Lat,Lon,Alt,VelN,VelE,VelD,Cog"),
-	LOG_FORMAT(ATTC, "ffff", "Roll,Pitch,Yaw,Thrust"),
-	LOG_FORMAT(STAT, "BBBfBB", "MainState,NavState,ArmState,BatRem,BatWarn,Landed"),
-	LOG_FORMAT(RC, "ffffffffB", "Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Count"),
-	LOG_FORMAT(OUT0, "ffffffff", "Out0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
-	LOG_FORMAT(AIRS, "ff", "IndSpeed,TrueSpeed"),
-	LOG_FORMAT(ARSP, "fff", "RollRateSP,PitchRateSP,YawRateSP"),
-	LOG_FORMAT(FLOW, "hhfffBB", "RawX,RawY,CompX,CompY,Dist,Q,SensID"),
-	LOG_FORMAT(GPOS, "LLffff", "Lat,Lon,Alt,VelN,VelE,VelD"),
+	LOG_FORMAT(GPS, "QBffQLLfQffff", "GPS_t,FixType,EPH,EPV,POS_t,Lat,Lon,Alt,VEL_t,VelN,VelE,VelD,Cog"),
+	LOG_FORMAT(ATTC, "Qffff", "Time,Roll,Pitch,Yaw,Thrust"),
+	LOG_FORMAT(STAT, "QBBBfBB", "Time,MainState,NavState,ArmState,BatRem,BatWarn,Landed"),
+	LOG_FORMAT(RC, "QffffffffB", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Count"),
+	LOG_FORMAT(OUT0, "Qffffffff", "Time,Out0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
+	LOG_FORMAT(AIRS, "Qff", "Time,IndSpeed,TrueSpeed"),
+	LOG_FORMAT(ARSP, "Qfff", "Time,RollRateSP,PitchRateSP,YawRateSP"),
+	LOG_FORMAT(FLOW, "QhhfffBB", "Time,RawX,RawY,CompX,CompY,Dist,Q,SensID"),
+	LOG_FORMAT(GPOS, "QLLffff", "Time,Lat,Lon,Alt,VelN,VelE,VelD"),
 	LOG_FORMAT(GPSP, "BLLfffbBffff", "AltRel,Lat,Lon,Alt,Yaw,LoiterR,LoiterDir,NavCmd,P1,P2,P3,P4"),
-	LOG_FORMAT(ESC, "HBBBHHHHHHfH", "Counter,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
+	LOG_FORMAT(ESC, "QHBBBHHHHHHfH", "Time,Counter,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
 	LOG_FORMAT(GVSP, "fff", "VX,VY,VZ"),
-	LOG_FORMAT(BATT, "ffff", "V,VFilt,C,Discharged"),
+	LOG_FORMAT(BATT, "Qffff", "Time,V,VFilt,C,Discharged"),
+	/* TODO NEW ENTRY
+	 * Put here your own construct with all message formats
+	 * The definition of the formats is given in sdlog2_format.h
+	 */
+	LOG_FORMAT(XIMU, "Qfffffffff", "Time,AccX,AccY,AccZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ"),
+	LOG_FORMAT(XSEN, "ffff", "BaroPres,BaroAlt,BaroTemp,DiffPres"),
+	LOG_FORMAT(XGPS, "QBffQLLfQffff", "GPS_t,FixTyp,EPH,EPV,POS_t,Lat,Lon,Alt,VEL_t,VelN,VelE,VelD,Cog"),
+	LOG_FORMAT(XATT, "Qffffff", "Time,Roll,Pitch,Yaw,RollRate,PitchRate,YawRate"),
+	LOG_FORMAT(XGPO, "QLLffff", "Time,Lat,Lon,Alt,VelN,VelE,VelD"),
+	LOG_FORMAT(RANG, "Qff","Time,Ang_l,Ang_r"),
 	/* system-level messages, ID >= 0x80 */
 	// FMT: don't write format of format message, it's useless
 	LOG_FORMAT(TIME, "Q", "StartTime"),
