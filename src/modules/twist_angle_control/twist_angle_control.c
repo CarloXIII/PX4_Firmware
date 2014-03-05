@@ -97,7 +97,8 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 	static struct twist_angle_control_params p;
 	static struct twist_angle_control_param_handles h;
 
-	static PID_t twist_angle_controller;	// controller object for pid.h
+	/* Controller object for pid.h */
+	static PID_t twist_angle_controller;
 
 
 
@@ -126,15 +127,17 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 	static uint64_t last_run = 0;
 	float deltaT = (hrt_absolute_time() - last_run) / 1000000.0f;
 	last_run = hrt_absolute_time();
+
 	/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer left[rad] - Value of the Potentiometer right[rad] */
 	float actual_twist_ang = angle_measurement->value[1] - angle_measurement->value[2];
+
 	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 	float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP;
-	actuators->control[2] = pid_calculate(&twist_angle_controller, reference_twist_ang, angle_measurement->value, 0, deltaT) / MAX_ANG_SP;	//use PID-Controller lib pid.h
+	actuators->control[2] = pid_calculate(&twist_angle_controller, reference_twist_ang, actual_twist_ang, 0, deltaT) / MAX_ANG_SP;	//use PID-Controller lib pid.h
 
 		if (counter % 100 == 0) {	// debug
-			printf("actuator output (throttle, CH3) = %.3f, manual setpoint = %.3f, rpm_measurement->rpm = %f.1\n",actuators->control[3], reference_rpm, rpm_measurement->rpm);
-			printf("actuator output CH0 = %.3f, actuator output CH1 = %.3f, actuator output CH2 = %.3f, actuator output CH4 = %.3f\n",actuators->control[0] ,actuators->control[1], actuators->control[2], actuators->control[4]);
+			printf("actuator output (yaw, CH2) = %.3f, manual setpoint = %.3f, twist_angle_measurement->ang = %f.1\n",actuators->control[2], reference_twist_ang, actual_twist_ang);
+			printf("actuator output CH0 = %.3f, actuator output CH1 = %.3f, actuator output CH3 = %.3f\n",actuators->control[0] ,actuators->control[1], actuators->control[3]);
 		}
 
 	counter++;
