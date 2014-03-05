@@ -1,7 +1,7 @@
 /**
- * @file governor_controller_main.c
- * @author Benedikt Imbach, 2013
- * Implementation of a governor controller to use with rpm_arduino driver.
+ * @file twist_angle_controller_main.c
+ * @author Lukas Koepfli, 2014
+ * Implementation of a twist angle controller to hold a load parallel under a paraglider.
  */
 
 #include <nuttx/config.h>
@@ -17,34 +17,34 @@
 #include <drivers/drv_hrt.h>
 #include <arch/board/board.h>
 #include <uORB/uORB.h>
-#include <uORB/topics/vehicle_global_position.h>
-#include <uORB/topics/vehicle_global_position_setpoint.h>
-#include <uORB/topics/vehicle_attitude.h>
+//#include <uORB/topics/vehicle_global_position.h>
+//#include <uORB/topics/vehicle_global_position_setpoint.h>
+//#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/topics/vehicle_attitude_setpoint.h>
+//#include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
-#include <uORB/topics/vehicle_rates_setpoint.h>
-#include <uORB/topics/vehicle_global_position.h>
+//#include <uORB/topics/vehicle_rates_setpoint.h>
+//#include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_paraglider_angle.h>
 #include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
 #include <systemlib/perf_counter.h>
 #include <systemlib/systemlib.h>
-#include <drivers/drv_rpm.h>
-#include "governor_control.h"
+#include "twist_angle_control.h"
 
 /* Prototypes */
 /**
  * Deamon management function.
  */
-__EXPORT int governor_control_main(int argc, char *argv[]);
+__EXPORT int twist_angle_control_main(int argc, char *argv[]);
 
 /**
  * Mainloop of deamon.
  */
-int governor_control_thread_main(int argc, char *argv[]);
+int twist_angle_control_thread_main(int argc, char *argv[]);
 
 /**
  * Print the correct usage.
@@ -57,7 +57,7 @@ static bool thread_running = false;		/**< Deamon status flag */
 static int deamon_task;				/**< Handle of deamon task / thread */
 
 /* Main Thread */
-int governor_control_thread_main(int argc, char *argv[])
+int twist_angle_control_thread_main(int argc, char *argv[])
 {
 	/* read arguments */
 	bool verbose = false;		// for talking option
@@ -69,17 +69,17 @@ int governor_control_thread_main(int argc, char *argv[])
 	}
 
 	/* welcome user */
-	printf("[governor control] started\n");
+	printf("[twist_angle_control] started\n");
 
 	/* declare and safely initialize all structs */
-	struct rpm_report rpm_measurement;
-	memset(&rpm_measurement, 0, sizeof(rpm_measurement));
+	struct vehicle_paraglider_angle_s angle_measurement;
+	memset(&angle_measurement, 0, sizeof(angle_measurement));
 	struct manual_control_setpoint_s manual_sp;
 	memset(&manual_sp, 0, sizeof(manual_sp));
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
-	//struct vehicle_status_s vstatus;
-	//memset(&vstatus, 0, sizeof(vstatus));
+	struct vehicle_status_s vstatus;
+	memset(&vstatus, 0, sizeof(vstatus));
 
 	/* output structs */
 	struct actuator_controls_s actuators;
@@ -93,14 +93,14 @@ int governor_control_thread_main(int argc, char *argv[])
 	orb_advert_t actuator_pub = orb_advertise(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, &actuators);
 
 	/* subscribe */
-	int gov_sub = orb_subscribe(ORB_ID(sensor_rpm));
+	int rel_ang_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
 	int manual_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	int control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
-	//int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));		// not used jet the moment
+	int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 
 
 	/* Setup of loop */
-	struct pollfd fds = { .fd = gov_sub, .events = POLLIN };
+	struct pollfd fds = { .fd = rel_ang_sub, .events = POLLIN };
 
 
 	while (!thread_should_exit) {
@@ -109,12 +109,12 @@ int governor_control_thread_main(int argc, char *argv[])
 
 
 
-		bool gov_updated;
-		orb_check(gov_sub, &gov_updated); /* Check if there is a new rpm measurement */
+		bool rel_ang_updated;
+		orb_check(rel_ang_sub, &rel_ang_updated); /* Check if there is a new relative angle measurement */
 
 		/* get a local copy */
-		if (gov_updated)
-			orb_copy(ORB_ID(sensor_rpm), gov_sub, &rpm_measurement);
+		if (rel_ang_updated)
+			orb_copy(ORB_ID(vehicle_paraglider_angle), rel_ang_sub, &angle_measurement);
 			orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);	// Also update the setpoint from the radio control
 			/*
 			 * The PX4 architecture provides a mixer outside of the controller.
@@ -131,23 +131,21 @@ int governor_control_thread_main(int argc, char *argv[])
 			 *    4  -  flaps  (-1..+1)
 			 *    ...
 			 */
-			orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);	// update the flags for operating mode
-			//orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);
+			orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);	/* update the flags for operating mode */
+			orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);	/* update vehicle status flags */
 
 
-		if (control_mode.flag_control_manual_enabled) {		// not jet clear
-			//printf("[control man enabled, start pid\n");
-			if (control_mode.flag_control_attitude_enabled) {	// governor mode sets rpm
-				governor_control(&rpm_measurement, &manual_sp, &actuators);	//actuators.control[3] is set here
+		if (control_mode.flag_control_manual_enabled) {		// todo not jet clear
+			printf("[control man enabled, start pid\n");
+			if (control_mode.flag_control_attitude_enabled) {	// todo governor mode sets rpm
+				twist_angle_control(&angle_measurement, &manual_sp, &actuators);	//actuators.control[2] is set here
 
 				/* pass through other channels */
 				actuators.control[0] = manual_sp.roll;
 				actuators.control[1] = manual_sp.pitch;
-				actuators.control[2] = manual_sp.yaw;
+				actuators.control[3] = manual_sp.throttle;
 
-				//printf("[actuator 0 = %f\n", manual_sp.roll);
-
-			} else {											// manual mode passes all channels
+			} else {											// todo manual mode passes all channels
 				/* directly pass through values */
 				actuators.control[0] = manual_sp.roll;
 				/* positive pitch means negative actuator -> pull up */
@@ -169,7 +167,7 @@ int governor_control_thread_main(int argc, char *argv[])
 		}
 	} // exit: while loop
 
-	printf("[governor_control] exiting, engine shut down.\n");
+	printf("[twist_angle_control] exiting, engine shut down.\n");
 	thread_running = false;
 
 	/* kill all outputs */
@@ -178,11 +176,11 @@ int governor_control_thread_main(int argc, char *argv[])
 
 	orb_publish(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, actuator_pub, &actuators);
 
-	close(gov_sub);
+	close(rel_ang_sub);
 	close(actuator_pub);
 	close(manual_sp_sub);
 	close(control_mode_sub);
-	//close(vehicle_status_sub);
+	close(vehicle_status_sub);
 	fflush(stdout);
 	exit(0);
 
@@ -198,7 +196,7 @@ usage(const char *reason)
 	if (reason)
 		fprintf(stderr, "%s\n", reason);
 
-	fprintf(stderr, "usage: governor_control {start|stop|status}\n\n");
+	fprintf(stderr, "usage: twist_angle_control {start|stop|status}\n\n");
 	exit(1);
 }
 
@@ -210,7 +208,7 @@ usage(const char *reason)
  * The actual stack size should be set in the call
  * to task_create().
  */
-int governor_control_main(int argc, char *argv[])
+int twist_angle_control_main(int argc, char *argv[])
 {
 	if (argc < 1)
 		usage("missing command");
@@ -218,17 +216,17 @@ int governor_control_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "start")) {
 
 		if (thread_running) {
-			printf("governor_control already running\n");
+			printf("twist_angle_control already running\n");
 			/* this is not an error */
 			exit(0);
 		}
 
 		thread_should_exit = false;
-		deamon_task = task_spawn_cmd("governor_control",
+		deamon_task = task_spawn_cmd("twist_angle_control",
 					 SCHED_DEFAULT,
 					 SCHED_PRIORITY_MAX - 20,
 					 2048,
-					 governor_control_thread_main,
+					 twist_angle_control_thread_main,
 					 (argv) ? (const char **)&argv[2] : (const char **)NULL);
 		thread_running = true;
 		exit(0);
@@ -241,10 +239,10 @@ int governor_control_main(int argc, char *argv[])
 
 	if (!strcmp(argv[1], "status")) {
 		if (thread_running) {
-			printf("\tgovernor_control is running\n");
+			printf("\ttwist_angle_control is running\n");
 
 		} else {
-			printf("\tgovernor_control not started\n");
+			printf("\ttwist_angle_control not started\n");
 		}
 
 		exit(0);
