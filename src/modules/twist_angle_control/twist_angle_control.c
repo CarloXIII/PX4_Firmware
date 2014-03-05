@@ -104,9 +104,12 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 	if (!initialized) {
 		parameters_init(&h);
 		parameters_update(&h, &p);
-		pid_init(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d,  p.integral_limiter, MAX_RPM_SP, PID_MODE_DERIVATIV_CALC, DT_MIN); //PI Controller
-		// intmax is the anti-windup value (max i-value)
-		// limit is a symmetrical limiter, an asymmetric minimal limiter is not jet supported form PID lib
+		pid_init(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d,  p.integral_limiter, MAX_ANG_SP, PID_MODE_DERIVATIV_CALC, DT_MIN);
+		/* PID_MODE_DERIVATIV_CALC calculates discrete derivative from previous error
+		 * val_dot in pid_calculate() will be ignored
+		 * intmax is the anti-windup value (max i-value)
+		 * limit is a symmetrical limiter
+		*/
 		initialized = true;
 	}
 
@@ -115,7 +118,7 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 		/* update parameters from storage */
 		parameters_update(&h, &p);
 		printf("param updated: p = %f, i=%f, d=%f\n", p.twist_angle_p, p.twist_angle_i, p.twist_angle_d);
-		pid_set_parameters(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d, 0, MAX_RPM_SP);
+		pid_set_parameters(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d, 0, MAX_ANG_SP);
 	}
 
 
@@ -123,10 +126,11 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 	static uint64_t last_run = 0;
 	float deltaT = (hrt_absolute_time() - last_run) / 1000000.0f;
 	last_run = hrt_absolute_time();
-
-
-	float reference_rpm = manual_sp->throttle * MAX_RPM_SP;		//scaling of the throttle (0..1) to rpm (0...MAX_RPM_SP)
-	actuators->control[3] = pid_calculate(&twist_angle_controller, reference_rpm, rpm_measurement->rpm, 0, deltaT) / MAX_RPM_SP;	//use PID-Controller lib pid.h
+	/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer left[rad] - Value of the Potentiometer right[rad] */
+	float actual_twist_ang = angle_measurement->value[1] - angle_measurement->value[2];
+	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
+	float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP;
+	actuators->control[2] = pid_calculate(&twist_angle_controller, reference_twist_ang, angle_measurement->value, 0, deltaT) / MAX_ANG_SP;	//use PID-Controller lib pid.h
 
 		if (counter % 100 == 0) {	// debug
 			printf("actuator output (throttle, CH3) = %.3f, manual setpoint = %.3f, rpm_measurement->rpm = %f.1\n",actuators->control[3], reference_rpm, rpm_measurement->rpm);
