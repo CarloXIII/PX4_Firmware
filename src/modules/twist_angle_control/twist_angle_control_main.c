@@ -17,16 +17,10 @@
 #include <drivers/drv_hrt.h>
 #include <arch/board/board.h>
 #include <uORB/uORB.h>
-//#include <uORB/topics/vehicle_global_position.h>
-//#include <uORB/topics/vehicle_global_position_setpoint.h>
-//#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
-#include <uORB/topics/vehicle_status.h>
-//#include <uORB/topics/vehicle_attitude_setpoint.h>
+//#include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
-//#include <uORB/topics/vehicle_rates_setpoint.h>
-//#include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
 #include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
@@ -78,8 +72,9 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 	memset(&manual_sp, 0, sizeof(manual_sp));
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
-	struct vehicle_status_s vstatus;
-	memset(&vstatus, 0, sizeof(vstatus));
+	//struct vehicle_status_s vstatus;
+	//memset(&vstatus, 0, sizeof(vstatus));
+
 
 	/* output structs */
 	struct actuator_controls_s actuators;
@@ -96,7 +91,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 	int rel_ang_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
 	int manual_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	int control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
-	int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
+	//int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 
 
 	/* Setup of loop */
@@ -132,7 +127,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 			 *    ...
 			 */
 			orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode);	/* update the flags for operating mode */
-			orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);	/* update vehicle status flags */
+			//orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);	/* update vehicle status flags */
 
 
 		if (control_mode.flag_control_manual_enabled) {		// todo not jet clear
@@ -180,7 +175,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 	close(actuator_pub);
 	close(manual_sp_sub);
 	close(control_mode_sub);
-	close(vehicle_status_sub);
+	//close(vehicle_status_sub);
 	fflush(stdout);
 	exit(0);
 

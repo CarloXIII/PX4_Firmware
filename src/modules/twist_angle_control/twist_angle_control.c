@@ -17,12 +17,12 @@
 #include <uORB/uORB.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
-#include <uORB/topics/actuator_controls.h>
 #include <systemlib/systemlib.h>
+#include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/vehicle_paraglider_angle.h> /* use it for "vehicle_paraglider_angle_s" */
 
 #include "twist_angle_control.h"
-#include <uORB/topics/vehicle_paraglider_angle.h> /* use it for "vehicle_paraglider_angle_s" */
 
 
 #define DT_MIN 0.0025f	// todo Controller should run with maximal 400Hz
