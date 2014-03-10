@@ -1403,7 +1403,7 @@ int sdlog3_thread_main(int argc, char *argv[]) {
 				orb_copy(ORB_ID(rc_channels), subs.rc_sub, &buf.rc);
 				log_msg.msg_type = LOG_RC_MSG;
 				log_msg.body.log_RC.t = buf.rc.timestamp;
-				/* Copy only the first 8 channels of 14 */
+				/* Copy only the first 12 channels of 14 */
 				memcpy(log_msg.body.log_RC.channel, buf.rc.chan,
 						sizeof(log_msg.body.log_RC.channel));
 				log_msg.body.log_RC.channel_count = buf.rc.chan_count;
