@@ -34,12 +34,12 @@ The scaling factor for roll inputs is adjusted to implement differential travel
 for the servos.
 
 M: 2
-O:      10000  10000     65 -10000  10000
+O:      10000  10000     56 -10000  10000
 S: 0 0   5200   4200      0 -10000  10000
 S: 0 1   5200   4200      0 -10000  10000
 
 M: 2
-O:      10000  10000   -173 -10000  10000
+O:      10000  10000   -154 -10000  10000
 S: 0 0   4200   5200      0 -10000  10000
 S: 0 1  -5200  -4200      0 -10000  10000
 
@@ -49,18 +49,18 @@ Three scalers total (output, yaw, throttle).
 
 The scaling factor for yaw inputs is 0.15 and is inverted between the two motors.
 
-This mixer generates a range output (-0.74 to 0.74) from an throttle input in the (0 - 1)
-range.  Inputs from the throttle below zero are treated as zero.
+This mixer generates a range output (-1 to 1) from an throttle input in the (-1 to 1)
+range.
 
 M: 2
-O:      10000  10000      0  -7400   7400
+O:      10000  10000      0 -10000  10000
 S: 0 2   1500   1500      0 -10000  10000
-S: 0 3      0  20000 -10000 -10000  10000
+S: 0 3  10000  10000      0 -10000  10000
 
 M: 2
-O:      10000  10000      0  -7400   7400
+O:      10000  10000      0 -10000  10000
 S: 0 2  -1500  -1500      0 -10000  10000
-S: 0 3      0  20000 -10000 -10000  10000
+S: 0 3  10000  10000      0 -10000  10000
 
 Output 5-7
 --------
