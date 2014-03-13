@@ -167,7 +167,7 @@ struct log_STAT_s {
 #define LOG_RC_MSG 11
 struct log_RC_s {
 	uint64_t t;
-	float channel[12];
+	float channel[8];
 	uint8_t channel_count;
 };
 
@@ -240,7 +240,6 @@ struct log_GPSP_s {
 /* --- ESC - ESC STATE --- */
 #define LOG_ESC_MSG 18
 struct log_ESC_s {
-	uint64_t t;
 	uint16_t counter;
 	uint8_t esc_count;
 	uint8_t esc_connectiontype;
@@ -280,7 +279,7 @@ struct log_BATT_s {
  */
 
 /* --- XIMU - XSENS IMU SENSORS --- */
-#define LOG_XIMU_MSG 20
+#define LOG_XIMU_MSG 21
 struct log_XIMU_s {
 	uint64_t t;
 	float acc_x;
@@ -295,7 +294,7 @@ struct log_XIMU_s {
 };
 
 /* --- XSEN - XSENS OTHER SENSORS --- */
-#define LOG_XSEN_MSG 21
+#define LOG_XSEN_MSG 22
 struct log_XSEN_s {
 	float baro_pres;
 	float baro_alt;
@@ -304,7 +303,7 @@ struct log_XSEN_s {
 };
 
 /* --- XGPS - XSENS GPS POSITION --- */
-#define LOG_XGPS_MSG 22
+#define LOG_XGPS_MSG 23
 struct log_XGPS_s {
 	uint64_t gps_time;
 	uint8_t fix_type;
@@ -322,7 +321,7 @@ struct log_XGPS_s {
 };
 
 /* --- XATT - XSENS ATTITUDE --- */
-#define LOG_XATT_MSG 23
+#define LOG_XATT_MSG 24
 struct log_XATT_s {
 	uint64_t t;
 	float roll;
@@ -334,7 +333,7 @@ struct log_XATT_s {
 };
 
 /* --- XGPO - XSENS GLOBAL POSITION ESTIMATE --- */
-#define LOG_XGPO_MSG 24
+#define LOG_XGPO_MSG 25
 struct log_XGPO_s {
 	uint64_t t;
 	int32_t lat;
@@ -346,7 +345,7 @@ struct log_XGPO_s {
 };
 
 /* --- RANG - RELATIVE ANGLE --- */
-#define LOG_RANG_MSG 25
+#define LOG_RANG_MSG 26
 struct log_RANG_s {
 	uint64_t t;
 	float ang_l;
@@ -387,14 +386,14 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPS, "QBffQLLfQffff", "GPS_t,FixType,EPH,EPV,POS_t,Lat,Lon,Alt,VEL_t,VelN,VelE,VelD,Cog"),
 	LOG_FORMAT(ATTC, "Qffff", "Time,Roll,Pitch,Yaw,Thrust"),
 	LOG_FORMAT(STAT, "QBBBfBB", "Time,MainState,NavState,ArmState,BatRem,BatWarn,Landed"),
-	LOG_FORMAT(RC, "QffffffffffffB", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Ch8,Ch9,Ch10,Ch11,Count"),
+	LOG_FORMAT(RC, "QffffffffB", "Time,Ch0,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Count"),
 	LOG_FORMAT(OUT0, "Qffffffff", "Time,Out0,Out1,Out2,Out3,Out4,Out5,Out6,Out7"),
 	LOG_FORMAT(AIRS, "Qff", "Time,IndSpeed,TrueSpeed"),
 	LOG_FORMAT(ARSP, "Qfff", "Time,RollRateSP,PitchRateSP,YawRateSP"),
 	LOG_FORMAT(FLOW, "QhhfffBB", "Time,RawX,RawY,CompX,CompY,Dist,Q,SensID"),
 	LOG_FORMAT(GPOS, "QLLffff", "Time,Lat,Lon,Alt,VelN,VelE,VelD"),
 	LOG_FORMAT(GPSP, "BLLfffbBffff", "AltRel,Lat,Lon,Alt,Yaw,LoiterR,LoiterDir,NavCmd,P1,P2,P3,P4"),
-	LOG_FORMAT(ESC, "QHBBBHHHHHHfH", "Time,Counter,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
+	LOG_FORMAT(ESC, "HBBBHHHHHHfH", "Counter,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
 	LOG_FORMAT(GVSP, "fff", "VX,VY,VZ"),
 	LOG_FORMAT(BATT, "Qffff", "Time,V,VFilt,C,Discharged"),
 	/* TODO NEW ENTRY

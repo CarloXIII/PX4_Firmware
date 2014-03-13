@@ -131,8 +131,9 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 
 
 		if (control_mode.flag_control_manual_enabled) {		// todo not jet clear
-			printf("[control man enabled, start pid\n");
+
 			if (control_mode.flag_control_attitude_enabled) {	// todo governor mode sets rpm
+
 				twist_angle_control(&angle_measurement, &manual_sp, &actuators);	//actuators.control[2] is set here
 
 				/* pass through other channels */
