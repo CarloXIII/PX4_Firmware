@@ -4953,6 +4953,53 @@ static void mavlink_test_gps2_raw(uint8_t system_id, uint8_t component_id, mavli
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
 
+static void mavlink_test_power_status(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
+{
+	mavlink_message_t msg;
+        uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+        uint16_t i;
+	mavlink_power_status_t packet_in = {
+		17235,
+	}17339,
+	}17443,
+	};
+	mavlink_power_status_t packet1, packet2;
+        memset(&packet1, 0, sizeof(packet1));
+        	packet1.Vcc = packet_in.Vcc;
+        	packet1.Vservo = packet_in.Vservo;
+        	packet1.flags = packet_in.flags;
+        
+        
+
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_power_status_encode(system_id, component_id, &msg, &packet1);
+	mavlink_msg_power_status_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_power_status_pack(system_id, component_id, &msg , packet1.Vcc , packet1.Vservo , packet1.flags );
+	mavlink_msg_power_status_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_power_status_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.Vcc , packet1.Vservo , packet1.flags );
+	mavlink_msg_power_status_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+        mavlink_msg_to_send_buffer(buffer, &msg);
+        for (i=0; i<mavlink_msg_get_send_buffer_length(&msg); i++) {
+        	comm_send_ch(MAVLINK_COMM_0, buffer[i]);
+        }
+	mavlink_msg_power_status_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+        
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_power_status_send(MAVLINK_COMM_1 , packet1.Vcc , packet1.Vservo , packet1.flags );
+	mavlink_msg_power_status_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+}
+
 static void mavlink_test_data_transmission_handshake(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
 {
 	mavlink_message_t msg;
@@ -5227,6 +5274,55 @@ static void mavlink_test_setpoint_6dof(uint8_t system_id, uint8_t component_id, 
         memset(&packet2, 0, sizeof(packet2));
 	mavlink_msg_setpoint_6dof_send(MAVLINK_COMM_1 , packet1.target_system , packet1.trans_x , packet1.trans_y , packet1.trans_z , packet1.rot_x , packet1.rot_y , packet1.rot_z );
 	mavlink_msg_setpoint_6dof_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+}
+
+static void mavlink_test_twist_angle(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
+{
+	mavlink_message_t msg;
+        uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+        uint16_t i;
+	mavlink_twist_angle_t packet_in = {
+		963497464,
+	}963497672,
+	}963497880,
+	}963498088,
+	};
+	mavlink_twist_angle_t packet1, packet2;
+        memset(&packet1, 0, sizeof(packet1));
+        	packet1.Poti_Left = packet_in.Poti_Left;
+        	packet1.Poti_Right = packet_in.Poti_Right;
+        	packet1.Rel_Angle = packet_in.Rel_Angle;
+        	packet1.PID_Angle = packet_in.PID_Angle;
+        
+        
+
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_twist_angle_encode(system_id, component_id, &msg, &packet1);
+	mavlink_msg_twist_angle_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_twist_angle_pack(system_id, component_id, &msg , packet1.Poti_Left , packet1.Poti_Right , packet1.Rel_Angle , packet1.PID_Angle );
+	mavlink_msg_twist_angle_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_twist_angle_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.Poti_Left , packet1.Poti_Right , packet1.Rel_Angle , packet1.PID_Angle );
+	mavlink_msg_twist_angle_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+        mavlink_msg_to_send_buffer(buffer, &msg);
+        for (i=0; i<mavlink_msg_get_send_buffer_length(&msg); i++) {
+        	comm_send_ch(MAVLINK_COMM_0, buffer[i]);
+        }
+	mavlink_msg_twist_angle_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+        
+        memset(&packet2, 0, sizeof(packet2));
+	mavlink_msg_twist_angle_send(MAVLINK_COMM_1 , packet1.Poti_Left , packet1.Poti_Right , packet1.Rel_Angle , packet1.PID_Angle );
+	mavlink_msg_twist_angle_decode(last_msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
 
@@ -5609,11 +5705,13 @@ static void mavlink_test_common(uint8_t system_id, uint8_t component_id, mavlink
 	mavlink_test_log_request_end(system_id, component_id, last_msg);
 	mavlink_test_gps_inject_data(system_id, component_id, last_msg);
 	mavlink_test_gps2_raw(system_id, component_id, last_msg);
+	mavlink_test_power_status(system_id, component_id, last_msg);
 	mavlink_test_data_transmission_handshake(system_id, component_id, last_msg);
 	mavlink_test_encapsulated_data(system_id, component_id, last_msg);
 	mavlink_test_battery_status(system_id, component_id, last_msg);
 	mavlink_test_setpoint_8dof(system_id, component_id, last_msg);
 	mavlink_test_setpoint_6dof(system_id, component_id, last_msg);
+	mavlink_test_twist_angle(system_id, component_id, last_msg);
 	mavlink_test_memory_vect(system_id, component_id, last_msg);
 	mavlink_test_debug_vect(system_id, component_id, last_msg);
 	mavlink_test_named_value_float(system_id, component_id, last_msg);

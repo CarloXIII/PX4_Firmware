@@ -137,6 +137,8 @@ static double alt0 = 0;
 static void
 handle_message(mavlink_message_t *msg)
 {
+	static float carlo1 = 0;
+	static float carlo2 = 0;
 	if (msg->msgid == MAVLINK_MSG_ID_COMMAND_LONG) {
 
 		mavlink_command_long_t cmd_mavlink;
@@ -180,6 +182,20 @@ handle_message(mavlink_message_t *msg)
 					/* publish */
 					orb_publish(ORB_ID(vehicle_command), cmd_pub, &vcmd);
 				}
+			}
+			/*
+			 * TODO Carlo TEST
+			 */
+			if(cmd_mavlink.command == 0){
+				if(cmd_mavlink.target_component==0){
+							mavlink_msg_named_value_float_send(MAVLINK_COMM_0,1000,"TESTA",carlo1);
+							carlo1++;
+						}
+						if(cmd_mavlink.target_component==1){
+							mavlink_msg_named_value_float_send(MAVLINK_COMM_0,1000,"TESTB",carlo2);
+							carlo2++;
+						}
+
 			}
 		}
 	}
@@ -359,6 +375,8 @@ handle_message(mavlink_message_t *msg)
 			orb_publish(ORB_ID(telemetry_status), telemetry_status_pub, &tstatus);
 		}
 	}
+
+
 
 	/*
 	 * Only decode hil messages in HIL mode.

@@ -43,7 +43,7 @@
 #ifndef MAVLINK_BRIDGE_HEADER_H
 #define MAVLINK_BRIDGE_HEADER_H
 
-#define MAVLINK_USE_CONVENIENCE_FUNCTIONS
+#define MAVLINK_USE_CONVENIENCE_FUNCTIONS 1
 
 /* use efficient approach, see mavlink_helpers.h */
 #define MAVLINK_SEND_UART_BYTES mavlink_send_uart_bytes
@@ -53,6 +53,7 @@
 
 #include <v1.0/mavlink_types.h>
 #include <unistd.h>
+
 
 
 /* Struct that stores the communication settings of this system.

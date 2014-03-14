@@ -76,6 +76,8 @@ struct actuator_armed_s armed;
 struct actuator_controls_s actuators_0;
 struct vehicle_attitude_s att;
 struct airspeed_s airspeed;
+// TODO Carlo Test
+struct vehicle_paraglider_angle_s veh_para_angle;
 
 struct mavlink_subscriptions mavlink_subs;
 
@@ -126,6 +128,9 @@ static void	l_vehicle_rates_setpoint(const struct listener *l);
 static void	l_home(const struct listener *l);
 static void	l_airspeed(const struct listener *l);
 static void	l_nav_cap(const struct listener *l);
+// TODO Carlo Test
+static void l_paraglider_angle(const struct listener *l);
+#define TWIST_ANGLE_POLL_INTERVAL 100
 
 static const struct listener listeners[] = {
 	{l_sensor_combined,		&mavlink_subs.sensor_sub,	0},
@@ -152,6 +157,7 @@ static const struct listener listeners[] = {
 	{l_home,			&mavlink_subs.home_sub,		0},
 	{l_airspeed,			&mavlink_subs.airspeed_sub,		0},
 	{l_nav_cap,			&mavlink_subs.navigation_capabilities_sub,		0},
+	{l_paraglider_angle,	&mavlink_subs.vehicle_paraglider_angle_sub,	0},
 };
 
 static const unsigned n_listeners = sizeof(listeners) / sizeof(listeners[0]);
@@ -222,6 +228,7 @@ l_sensor_combined(const struct listener *l)
 					     fields_updated);
 
 	sensors_raw_counter++;
+
 }
 
 void
@@ -685,6 +692,21 @@ l_nav_cap(const struct listener *l)
 
 }
 
+/*
+ * TODO Carlo Test Methode für Angle-Listener
+ */
+ void
+ l_paraglider_angle(const struct listener *l)
+ {
+	 orb_copy(ORB_ID(vehicle_paraglider_angle),mavlink_subs.vehicle_paraglider_angle_sub, &veh_para_angle);
+	 mavlink_msg_twist_angle_send(MAVLINK_COMM_0,
+			 veh_para_angle.value[0],
+			 veh_para_angle.value[1],
+			 2 ,
+			 2);
+
+ }
+
 static void *
 uorb_receive_thread(void *arg)
 {
@@ -833,12 +855,18 @@ uorb_receive_start(void)
 	orb_set_interval(mavlink_subs.navigation_capabilities_sub, 500); 	/* 2Hz updates */
 	nav_cap.turn_distance = 0.0f;
 
+	/*
+	 * TODO CARLO TEST
+	 */
+	mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+	orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,TWIST_ANGLE_POLL_INTERVAL);
+
 	/* start the listener loop */
 	pthread_attr_t uorb_attr;
 	pthread_attr_init(&uorb_attr);
 
 	/* Set stack size, needs less than 2k */
-	pthread_attr_setstacksize(&uorb_attr, 2048);
+	pthread_attr_setstacksize(&uorb_attr, 2048); //2048
 
 	pthread_t thread;
 	pthread_create(&thread, &uorb_attr, uorb_receive_thread, NULL);

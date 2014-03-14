@@ -68,6 +68,8 @@
 #include <uORB/topics/battery_status.h>
 #include <drivers/drv_rc_input.h>
 #include <uORB/topics/navigation_capabilities.h>
+//TODO Carlo Test
+#include <uORB/topics/vehicle_paraglider_angle.h>
 
 struct mavlink_subscriptions {
 	int sensor_sub;
@@ -94,6 +96,8 @@ struct mavlink_subscriptions {
 	int home_sub;
 	int airspeed_sub;
 	int navigation_capabilities_sub;
+	// TODO CARLO Test
+	int vehicle_paraglider_angle_sub;
 };
 
 extern struct mavlink_subscriptions mavlink_subs;

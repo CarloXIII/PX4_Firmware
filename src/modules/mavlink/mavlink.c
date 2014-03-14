@@ -74,6 +74,7 @@
 #include "waypoints.h"
 #include "mavlink_parameters.h"
 
+
 /* define MAVLink specific parameters */
 PARAM_DEFINE_INT32(MAV_SYS_ID, 1);
 PARAM_DEFINE_INT32(MAV_COMP_ID, 50);
@@ -515,6 +516,7 @@ void mavlink_update_system(void)
  */
 int mavlink_thread_main(int argc, char *argv[])
 {
+
 	/* initialize mavlink text message buffering */
 	mavlink_logbuffer_init(&lb, 10);
 
@@ -664,6 +666,7 @@ int mavlink_thread_main(int argc, char *argv[])
 			/* send heartbeat */
 			mavlink_msg_heartbeat_send(chan, mavlink_system.type, MAV_AUTOPILOT_PX4, mavlink_base_mode, mavlink_custom_mode, mavlink_state);
 
+
 			/* switch HIL mode if required */
 			if (v_status.hil_state == HIL_STATE_ON)
 				set_hil_on_off(true);
@@ -686,9 +689,11 @@ int mavlink_thread_main(int argc, char *argv[])
 						    v_status.errors_count3,
 						    v_status.errors_count4);
 			lowspeed_counter = 0;
+
 		}
 
 		lowspeed_counter++;
+
 
 		mavlink_waypoint_eventloop(mavlink_missionlib_get_system_timestamp(), &global_pos, &local_pos, &nav_cap);
 
