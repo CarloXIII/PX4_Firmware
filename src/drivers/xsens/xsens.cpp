@@ -437,7 +437,7 @@ XSENS::print_status()
 	printf("\nvelocity y: %.3f", _report_global_position.vy);
 	printf("\nvelocity z: %.3f", _report_global_position.vz);
 
-	printf("\n*****************************************************");
+	printf("\n*****************************************************\n");
 
 	//xsens::_
 	//errx(0, "PASS");
