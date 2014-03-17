@@ -128,9 +128,8 @@ static void	l_vehicle_rates_setpoint(const struct listener *l);
 static void	l_home(const struct listener *l);
 static void	l_airspeed(const struct listener *l);
 static void	l_nav_cap(const struct listener *l);
-// TODO Carlo Test
 static void l_paraglider_angle(const struct listener *l);
-#define TWIST_ANGLE_POLL_INTERVAL 100
+
 
 static const struct listener listeners[] = {
 	{l_sensor_combined,		&mavlink_subs.sensor_sub,	0},
@@ -698,12 +697,14 @@ l_nav_cap(const struct listener *l)
  void
  l_paraglider_angle(const struct listener *l)
  {
+	 if(mavlink_subs.vehicle_paraglider_angle_sub != NULL){
 	 orb_copy(ORB_ID(vehicle_paraglider_angle),mavlink_subs.vehicle_paraglider_angle_sub, &veh_para_angle);
 	 mavlink_msg_twist_angle_send(MAVLINK_COMM_0,
-			 veh_para_angle.value[0],
-			 veh_para_angle.value[1],
-			 2 ,
+			 veh_para_angle.si_units[0],
+			 veh_para_angle.si_units[1],
+			 ((veh_para_angle.si_units[0]) - (veh_para_angle.si_units[1])) ,
 			 2);
+	 }
 
  }
 
@@ -855,11 +856,11 @@ uorb_receive_start(void)
 	orb_set_interval(mavlink_subs.navigation_capabilities_sub, 500); 	/* 2Hz updates */
 	nav_cap.turn_distance = 0.0f;
 
-	/*
-	 * TODO CARLO TEST
-	 */
-	mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
-	orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,TWIST_ANGLE_POLL_INTERVAL);
+//	/*
+//	 * TODO CARLO TEST
+//	 */
+//	mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+//	orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,100);
 
 	/* start the listener loop */
 	pthread_attr_t uorb_attr;

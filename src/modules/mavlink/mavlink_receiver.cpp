@@ -188,15 +188,16 @@ handle_message(mavlink_message_t *msg)
 			 */
 			if(cmd_mavlink.command == 0){
 				if(cmd_mavlink.target_component==0){
-							mavlink_msg_named_value_float_send(MAVLINK_COMM_0,1000,"TESTA",carlo1);
-							carlo1++;
-						}
-						if(cmd_mavlink.target_component==1){
-							mavlink_msg_named_value_float_send(MAVLINK_COMM_0,1000,"TESTB",carlo2);
-							carlo2++;
-						}
+					mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+					orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,100);
+				}
+				if(cmd_mavlink.target_component==1){
+					orb_unsubscribe(mavlink_subs.vehicle_paraglider_angle_sub);
+					mavlink_subs.vehicle_paraglider_angle_sub = NULL;
+				}
 
 			}
+
 		}
 	}
 
