@@ -130,6 +130,11 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 
 	/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer left[rad] - Value of the Potentiometer right[rad] */
 	float actual_twist_ang = ((angle_measurement->si_units[1]) - (angle_measurement->si_units[0]));
+	/*todo*/
+	if (counter % 1000 == 0) {	// debug
+		printf("actual_twist_ang = %.3f\n",actual_twist_ang);
+	}
+	/*end todo*/
 
 	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 	float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP;
