@@ -100,12 +100,10 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 	/* Controller object for pid.h */
 	static PID_t twist_angle_controller;
 
-
-
 	if (!initialized) {
 		parameters_init(&h);
 		parameters_update(&h, &p);
-		pid_init(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d,  p.integral_limiter, MAX_ANG_SP, PID_MODE_DERIVATIV_CALC, DT_MIN);
+		pid_init(&twist_angle_controller,PID_MODE_DERIVATIV_CALC, DT_MIN);
 		/* PID_MODE_DERIVATIV_CALC calculates discrete derivative from previous error
 		 * val_dot in pid_calculate() will be ignored
 		 * intmax is the anti-windup value (max i-value)
@@ -119,7 +117,7 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 		/* update parameters from storage */
 		parameters_update(&h, &p);
 		printf("param updated: p = %f, i=%f, d=%f\n", p.twist_angle_p, p.twist_angle_i, p.twist_angle_d);
-		pid_set_parameters(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d, 0, MAX_ANG_SP);
+		pid_set_parameters(&twist_angle_controller, p.twist_angle_p, p.twist_angle_i, p.twist_angle_d, p.integral_limiter, MAX_ANG_SP);
 	}
 
 

@@ -18,7 +18,6 @@
 #include <arch/board/board.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/vehicle_global_position.h>
-#include <uORB/topics/vehicle_global_position_setpoint.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
