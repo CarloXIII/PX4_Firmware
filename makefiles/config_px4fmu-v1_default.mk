@@ -69,7 +69,7 @@ MODULES		+= modules/commander
 MODULES		+= modules/navigator
 MODULES		+= modules/mavlink
 MODULES		+= modules/gpio_led
-MODULES		+= modules/governor_control
+#MODULES		+= modules/governor_control
 
 #
 # Estimation modules (EKF/ SO3 / other filters)

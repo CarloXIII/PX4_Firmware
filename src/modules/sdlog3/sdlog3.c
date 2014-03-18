@@ -73,7 +73,7 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_global_position.h>
-#include <uORB/topics/vehicle_global_position_setpoint.h>
+//#include <uORB/topics/vehicle_global_position_setpoint.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/vehicle_vicon_position.h>
 #include <uORB/topics/vehicle_global_velocity_setpoint.h>
