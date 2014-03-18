@@ -39,7 +39,7 @@ usleep 5000
 # Set default values
 #
 set HIL no
-set VEHICLE_TYPE none
+set VEHICLE_TYPE fw
 set MIXER none
 set USE_IO yes
 set OUTPUT_MODE none
