@@ -22,7 +22,7 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
-#include <uORB/topics/debug_key_value.h>
+//#include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
 #include <systemlib/perf_counter.h>
@@ -101,6 +101,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 	while (!thread_should_exit) {
 		/* wait for a sensor update, check for exit condition every 500 ms with this while-loop */
 		poll(&fds, 1, 500);
+		static int counter = 0;
 
 
 
@@ -141,6 +142,20 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 				actuators.control[1] = manual_sp.pitch;
 				actuators.control[3] = manual_sp.throttle;
 
+				/*todo*/
+				if (counter % 1000 == 0) {	// debug
+					printf("Regler\n");
+					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
+					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
+					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
+					printf("actuator output CH3 = %.3f\n",actuators.control[3]);
+					printf("manual setpoint roll = %.3f\n",manual_sp.roll);
+					printf("manual setpoint pitch = %.3f\n",manual_sp.pitch);
+					printf("manual setpoint yaw = %.3f\n",manual_sp.yaw);
+					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
+				}
+				/*end todo*/
+
 			} else {											// todo manual mode passes all channels
 				/* directly pass through values */
 				actuators.control[0] = manual_sp.roll;
@@ -148,6 +163,21 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 				actuators.control[1] = manual_sp.pitch;
 				actuators.control[2] = manual_sp.yaw;
 				actuators.control[3] = manual_sp.throttle;
+
+				/*todo*/
+				if (counter % 1000 == 0) {	// debug
+					printf("Manual\n");
+					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
+					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
+					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
+					printf("actuator output CH3 = %.3f\n",actuators.control[3]);
+					printf("manual setpoint roll = %.3f\n",manual_sp.roll);
+					printf("manual setpoint pitch = %.3f\n",manual_sp.pitch);
+					printf("manual setpoint yaw = %.3f\n",manual_sp.yaw);
+					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
+				}
+				/*end todo*/
+
 			} // exit: control_mode.flag_control_attitude_enabled
 		} //exit: control_mode.flag_control_manual_enabled
 
@@ -161,6 +191,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 		} else {
 			printf("actuator not finite");
 		}
+		counter++;
 	} // exit: while loop
 
 	printf("[twist_angle_control] exiting, engine shut down.\n");

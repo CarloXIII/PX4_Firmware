@@ -129,13 +129,18 @@ int twist_angle_control(const struct vehicle_paraglider_angle_s *angle_measureme
 	last_run = hrt_absolute_time();
 
 	/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer left[rad] - Value of the Potentiometer right[rad] */
-	float actual_twist_ang = ((angle_measurement->si_units[0]) - (angle_measurement->si_units[1]));
+	float actual_twist_ang = ((angle_measurement->si_units[1]) - (angle_measurement->si_units[0]));
+	/*todo*/
+	if (counter % 1000 == 0) {	// debug
+		printf("actual_twist_ang = %.3f\n",actual_twist_ang);
+	}
+	/*end todo*/
 
 	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 	float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP;
 	actuators->control[2] = pid_calculate(&twist_angle_controller, reference_twist_ang, actual_twist_ang, 0, deltaT) / MAX_ANG_SP;	//use PID-Controller lib pid.h
 
-		if (counter % 100 == 0) {	// debug
+		if (counter % 1000 == 0) {	// debug
 			printf("actuator output (yaw, CH2) = %.3f, manual setpoint = %.3f, twist_angle_measurement->ang = %.3f\n",actuators->control[2], reference_twist_ang, actual_twist_ang);
 			printf("actuator output CH0 = %.3f, actuator output CH1 = %.3f, actuator output CH3 = %.3f\n",actuators->control[0] ,actuators->control[1], actuators->control[3]);
 		}
