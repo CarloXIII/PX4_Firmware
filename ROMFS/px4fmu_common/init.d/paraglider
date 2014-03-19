@@ -39,7 +39,7 @@ usleep 5000
 # Set default values
 #
 set HIL no
-set VEHICLE_TYPE fw
+set VEHICLE_TYPE none
 set MIXER none
 set USE_IO yes
 set OUTPUT_MODE none
@@ -300,6 +300,15 @@ usleep 5000
 echo "[init] Start sensors"
 sh /etc/init.d/rc.sensors
 usleep 5000
+
+
+
+
+
+
+#
+# Additional Applications
+#
  
 #
 # Start XSENS interface
