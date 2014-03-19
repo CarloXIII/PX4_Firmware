@@ -69,6 +69,7 @@
 #include <drivers/drv_rc_input.h>
 #include <uORB/topics/navigation_capabilities.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
+#include <uORB/topics/xsens_vehicle_attitude.h>
 
 
 struct mavlink_subscriptions {
@@ -98,6 +99,7 @@ struct mavlink_subscriptions {
 	int navigation_capabilities_sub;
 	int position_setpoint_triplet_sub;
 	int vehicle_paraglider_angle_sub;
+	int xsens_attitude_sub;
 };
 
 extern struct mavlink_subscriptions mavlink_subs;
@@ -122,6 +124,19 @@ extern struct rc_channels_s rc;
 
 /** Actuator armed state */
 extern struct actuator_armed_s armed;
+
+// todo Carlo: Flags for selectec Parameter-Transmission to QGroundControl
+typedef struct sel_par_QGC{
+	uint8_t TWIST_ANGLE_SEL : 1;
+	uint8_t XSENS_ATTITUDE_SEL :1;
+	uint8_t XSENS_GLOB_POS :1;
+	uint8_t XSENS_GPS_POS_SEL :1;
+	uint8_t XSENS_SENS_COMB_SEL :1;
+	uint8_t XSENS_SENS_RAW_SEL :1;
+}sel_par_t;
+
+// todo Carlo: Selected Parameters to send to QGC
+extern sel_par_t qgc_selected_params;
 
 /** Worker thread starter */
 extern pthread_t uorb_receive_start(void);

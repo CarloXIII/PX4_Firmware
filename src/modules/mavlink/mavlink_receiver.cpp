@@ -133,11 +133,15 @@ static int32_t lat0 = 0;
 static int32_t lon0 = 0;
 static double alt0 = 0;
 
+sel_par_t qgc_selected_params = {1,1,1,1,1,1};
+
+
+
+
+
 static void
 handle_message(mavlink_message_t *msg)
 {
-	static float carlo1 = 0;
-	static float carlo2 = 0;
 	if (msg->msgid == MAVLINK_MSG_ID_COMMAND_LONG) {
 
 		mavlink_command_long_t cmd_mavlink;
@@ -182,21 +186,19 @@ handle_message(mavlink_message_t *msg)
 					orb_publish(ORB_ID(vehicle_command), cmd_pub, &vcmd);
 				}
 			}
-			/*
-			 * TODO Carlo TEST
-			 */
-			if(cmd_mavlink.command == 0){
-				if(cmd_mavlink.target_component==0){
-					mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
-					orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,100);
-				}
-				if(cmd_mavlink.target_component==1){
-					orb_unsubscribe(mavlink_subs.vehicle_paraglider_angle_sub);
-					mavlink_subs.vehicle_paraglider_angle_sub = NULL;
-				}
 
+
+		}
+		/*
+		 * TODO Carlo TEST
+		 */
+		if(cmd_mavlink.command == 0){
+			if(cmd_mavlink.target_component==3){
+				qgc_selected_params.TWIST_ANGLE_SEL = 1;
 			}
-
+			else if(cmd_mavlink.target_component==5){
+				qgc_selected_params.TWIST_ANGLE_SEL = 0;
+			}
 		}
 	}
 

@@ -142,6 +142,8 @@ static enum {
 
 static struct mavlink_logbuffer lb;
 
+
+
 static void mavlink_update_system(void);
 static int mavlink_open_uart(int baudrate, const char *uart_name, struct termios *uart_config_original, bool *is_usb);
 static void usage(void);

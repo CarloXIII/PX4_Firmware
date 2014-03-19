@@ -79,6 +79,7 @@ struct vehicle_attitude_s att;
 struct airspeed_s airspeed;
 // TODO Carlo Test
 struct vehicle_paraglider_angle_s veh_para_angle;
+struct xsens_vehicle_attitude_s xsens_veh_attitude;
 
 struct mavlink_subscriptions mavlink_subs;
 
@@ -130,6 +131,7 @@ static void	l_home(const struct listener *l);
 static void	l_airspeed(const struct listener *l);
 static void	l_nav_cap(const struct listener *l);
 static void l_paraglider_angle(const struct listener *l);
+static void l_xsens_attitude(const struct listener *l);
 
 
 static const struct listener listeners[] = {
@@ -158,6 +160,7 @@ static const struct listener listeners[] = {
 	{l_airspeed,			&mavlink_subs.airspeed_sub,		0},
 	{l_nav_cap,			&mavlink_subs.navigation_capabilities_sub,		0},
 	{l_paraglider_angle,	&mavlink_subs.vehicle_paraglider_angle_sub,	0},
+	{l_xsens_attitude,		&mavlink_subs.xsens_attitude_sub, 0},
 };
 
 static const unsigned n_listeners = sizeof(listeners) / sizeof(listeners[0]);
@@ -693,16 +696,38 @@ l_nav_cap(const struct listener *l)
  void
  l_paraglider_angle(const struct listener *l)
  {
-	 if(mavlink_subs.vehicle_paraglider_angle_sub != NULL){
+	if(qgc_selected_params.TWIST_ANGLE_SEL != 0){
 	 orb_copy(ORB_ID(vehicle_paraglider_angle),mavlink_subs.vehicle_paraglider_angle_sub, &veh_para_angle);
 	 mavlink_msg_twist_angle_send(MAVLINK_COMM_0,
 			 veh_para_angle.si_units[0],
 			 veh_para_angle.si_units[1],
-			 ((veh_para_angle.si_units[0]) - (veh_para_angle.si_units[1])) ,
-			 2);
-	 }
+			 (veh_para_angle.si_units[0]) - (veh_para_angle.si_units[1]));
+	}
 
  }
+
+ /*
+  * TODO Carlo Test Methode für Angle-Listener
+  */
+  void
+  l_xsens_attitude(const struct listener *l)
+  {
+ 	if(qgc_selected_params.XSENS_ATTITUDE_SEL != 0){
+ 	 orb_copy(ORB_ID(xsens_vehicle_attitude),mavlink_subs.xsens_attitude_sub, &xsens_veh_attitude);
+ 	 mavlink_msg_xsens_attitude_send(MAVLINK_COMM_0,
+ 			 xsens_veh_attitude.timestamp,
+ 			 xsens_veh_attitude.roll,
+ 			 xsens_veh_attitude.pitch,
+ 			 xsens_veh_attitude.yaw,
+ 			 xsens_veh_attitude.rollspeed,
+ 			 xsens_veh_attitude.pitchspeed,
+ 			 xsens_veh_attitude.yawspeed,
+ 			 xsens_veh_attitude.rollacc,
+ 			 xsens_veh_attitude.pitchacc,
+ 			 xsens_veh_attitude.yawspeed);
+ 	}
+
+  }
 
 static void *
 uorb_receive_thread(void *arg)
@@ -859,8 +884,11 @@ uorb_receive_start(void)
 //	/*
 //	 * TODO CARLO TEST
 //	 */
-//	mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
-//	orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,100);
+	mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+	orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,100);
+
+	mavlink_subs.xsens_attitude_sub = orb_subscribe(ORB_ID(xsens_vehicle_attitude));
+	orb_set_interval(mavlink_subs.xsens_attitude_sub,100);
 
 	/* start the listener loop */
 	pthread_attr_t uorb_attr;

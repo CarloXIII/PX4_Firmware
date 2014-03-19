@@ -4,27 +4,25 @@
 
 typedef struct __mavlink_twist_angle_t
 {
- uint32_t Poti_Left; ///< Timestamp 
- uint32_t Poti_Right; ///< Timestamp 
- uint32_t Rel_Angle; ///< Timestamp 
- uint32_t PID_Angle; ///< Timestamp 
+ float Poti_Left; ///< si_value of the left poti 
+ float Poti_Right; ///< si_value of the right poti 
+ float Rel_Angle; ///< relative Angle between the potis 
 } mavlink_twist_angle_t;
 
-#define MAVLINK_MSG_ID_TWIST_ANGLE_LEN 16
-#define MAVLINK_MSG_ID_201_LEN 16
+#define MAVLINK_MSG_ID_TWIST_ANGLE_LEN 12
+#define MAVLINK_MSG_ID_201_LEN 12
 
-#define MAVLINK_MSG_ID_TWIST_ANGLE_CRC 199
-#define MAVLINK_MSG_ID_201_CRC 199
+#define MAVLINK_MSG_ID_TWIST_ANGLE_CRC 118
+#define MAVLINK_MSG_ID_201_CRC 118
 
 
 
 #define MAVLINK_MESSAGE_INFO_TWIST_ANGLE { \
 	"TWIST_ANGLE", \
-	4, \
-	{  { "Poti_Left", NULL, MAVLINK_TYPE_UINT32_T, 0, 0, offsetof(mavlink_twist_angle_t, Poti_Left) }, \
-         { "Poti_Right", NULL, MAVLINK_TYPE_UINT32_T, 0, 4, offsetof(mavlink_twist_angle_t, Poti_Right) }, \
-         { "Rel_Angle", NULL, MAVLINK_TYPE_UINT32_T, 0, 8, offsetof(mavlink_twist_angle_t, Rel_Angle) }, \
-         { "PID_Angle", NULL, MAVLINK_TYPE_UINT32_T, 0, 12, offsetof(mavlink_twist_angle_t, PID_Angle) }, \
+	3, \
+	{  { "Poti_Left", NULL, MAVLINK_TYPE_FLOAT, 0, 0, offsetof(mavlink_twist_angle_t, Poti_Left) }, \
+         { "Poti_Right", NULL, MAVLINK_TYPE_FLOAT, 0, 4, offsetof(mavlink_twist_angle_t, Poti_Right) }, \
+         { "Rel_Angle", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_twist_angle_t, Rel_Angle) }, \
          } \
 }
 
@@ -35,21 +33,19 @@ typedef struct __mavlink_twist_angle_t
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param msg The MAVLink message to compress the data into
  *
- * @param Poti_Left Timestamp 
- * @param Poti_Right Timestamp 
- * @param Rel_Angle Timestamp 
- * @param PID_Angle Timestamp 
+ * @param Poti_Left si_value of the left poti 
+ * @param Poti_Right si_value of the right poti 
+ * @param Rel_Angle relative Angle between the potis 
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_twist_angle_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg,
-						       uint32_t Poti_Left, uint32_t Poti_Right, uint32_t Rel_Angle, uint32_t PID_Angle)
+						       float Poti_Left, float Poti_Right, float Rel_Angle)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
 	char buf[MAVLINK_MSG_ID_TWIST_ANGLE_LEN];
-	_mav_put_uint32_t(buf, 0, Poti_Left);
-	_mav_put_uint32_t(buf, 4, Poti_Right);
-	_mav_put_uint32_t(buf, 8, Rel_Angle);
-	_mav_put_uint32_t(buf, 12, PID_Angle);
+	_mav_put_float(buf, 0, Poti_Left);
+	_mav_put_float(buf, 4, Poti_Right);
+	_mav_put_float(buf, 8, Rel_Angle);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_TWIST_ANGLE_LEN);
 #else
@@ -57,7 +53,6 @@ static inline uint16_t mavlink_msg_twist_angle_pack(uint8_t system_id, uint8_t c
 	packet.Poti_Left = Poti_Left;
 	packet.Poti_Right = Poti_Right;
 	packet.Rel_Angle = Rel_Angle;
-	packet.PID_Angle = PID_Angle;
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), &packet, MAVLINK_MSG_ID_TWIST_ANGLE_LEN);
 #endif
@@ -76,22 +71,20 @@ static inline uint16_t mavlink_msg_twist_angle_pack(uint8_t system_id, uint8_t c
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param chan The MAVLink channel this message will be sent over
  * @param msg The MAVLink message to compress the data into
- * @param Poti_Left Timestamp 
- * @param Poti_Right Timestamp 
- * @param Rel_Angle Timestamp 
- * @param PID_Angle Timestamp 
+ * @param Poti_Left si_value of the left poti 
+ * @param Poti_Right si_value of the right poti 
+ * @param Rel_Angle relative Angle between the potis 
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_twist_angle_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t chan,
 							   mavlink_message_t* msg,
-						           uint32_t Poti_Left,uint32_t Poti_Right,uint32_t Rel_Angle,uint32_t PID_Angle)
+						           float Poti_Left,float Poti_Right,float Rel_Angle)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
 	char buf[MAVLINK_MSG_ID_TWIST_ANGLE_LEN];
-	_mav_put_uint32_t(buf, 0, Poti_Left);
-	_mav_put_uint32_t(buf, 4, Poti_Right);
-	_mav_put_uint32_t(buf, 8, Rel_Angle);
-	_mav_put_uint32_t(buf, 12, PID_Angle);
+	_mav_put_float(buf, 0, Poti_Left);
+	_mav_put_float(buf, 4, Poti_Right);
+	_mav_put_float(buf, 8, Rel_Angle);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_TWIST_ANGLE_LEN);
 #else
@@ -99,7 +92,6 @@ static inline uint16_t mavlink_msg_twist_angle_pack_chan(uint8_t system_id, uint
 	packet.Poti_Left = Poti_Left;
 	packet.Poti_Right = Poti_Right;
 	packet.Rel_Angle = Rel_Angle;
-	packet.PID_Angle = PID_Angle;
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), &packet, MAVLINK_MSG_ID_TWIST_ANGLE_LEN);
 #endif
@@ -122,7 +114,7 @@ static inline uint16_t mavlink_msg_twist_angle_pack_chan(uint8_t system_id, uint
  */
 static inline uint16_t mavlink_msg_twist_angle_encode(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, const mavlink_twist_angle_t* twist_angle)
 {
-	return mavlink_msg_twist_angle_pack(system_id, component_id, msg, twist_angle->Poti_Left, twist_angle->Poti_Right, twist_angle->Rel_Angle, twist_angle->PID_Angle);
+	return mavlink_msg_twist_angle_pack(system_id, component_id, msg, twist_angle->Poti_Left, twist_angle->Poti_Right, twist_angle->Rel_Angle);
 }
 
 /**
@@ -136,28 +128,26 @@ static inline uint16_t mavlink_msg_twist_angle_encode(uint8_t system_id, uint8_t
  */
 static inline uint16_t mavlink_msg_twist_angle_encode_chan(uint8_t system_id, uint8_t component_id, uint8_t chan, mavlink_message_t* msg, const mavlink_twist_angle_t* twist_angle)
 {
-	return mavlink_msg_twist_angle_pack_chan(system_id, component_id, chan, msg, twist_angle->Poti_Left, twist_angle->Poti_Right, twist_angle->Rel_Angle, twist_angle->PID_Angle);
+	return mavlink_msg_twist_angle_pack_chan(system_id, component_id, chan, msg, twist_angle->Poti_Left, twist_angle->Poti_Right, twist_angle->Rel_Angle);
 }
 
 /**
  * @brief Send a twist_angle message
  * @param chan MAVLink channel to send the message
  *
- * @param Poti_Left Timestamp 
- * @param Poti_Right Timestamp 
- * @param Rel_Angle Timestamp 
- * @param PID_Angle Timestamp 
+ * @param Poti_Left si_value of the left poti 
+ * @param Poti_Right si_value of the right poti 
+ * @param Rel_Angle relative Angle between the potis 
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
 
-static inline void mavlink_msg_twist_angle_send(mavlink_channel_t chan, uint32_t Poti_Left, uint32_t Poti_Right, uint32_t Rel_Angle, uint32_t PID_Angle)
+static inline void mavlink_msg_twist_angle_send(mavlink_channel_t chan, float Poti_Left, float Poti_Right, float Rel_Angle)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
 	char buf[MAVLINK_MSG_ID_TWIST_ANGLE_LEN];
-	_mav_put_uint32_t(buf, 0, Poti_Left);
-	_mav_put_uint32_t(buf, 4, Poti_Right);
-	_mav_put_uint32_t(buf, 8, Rel_Angle);
-	_mav_put_uint32_t(buf, 12, PID_Angle);
+	_mav_put_float(buf, 0, Poti_Left);
+	_mav_put_float(buf, 4, Poti_Right);
+	_mav_put_float(buf, 8, Rel_Angle);
 
 #if MAVLINK_CRC_EXTRA
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_TWIST_ANGLE, buf, MAVLINK_MSG_ID_TWIST_ANGLE_LEN, MAVLINK_MSG_ID_TWIST_ANGLE_CRC);
@@ -169,7 +159,6 @@ static inline void mavlink_msg_twist_angle_send(mavlink_channel_t chan, uint32_t
 	packet.Poti_Left = Poti_Left;
 	packet.Poti_Right = Poti_Right;
 	packet.Rel_Angle = Rel_Angle;
-	packet.PID_Angle = PID_Angle;
 
 #if MAVLINK_CRC_EXTRA
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_TWIST_ANGLE, (const char *)&packet, MAVLINK_MSG_ID_TWIST_ANGLE_LEN, MAVLINK_MSG_ID_TWIST_ANGLE_CRC);
@@ -187,41 +176,31 @@ static inline void mavlink_msg_twist_angle_send(mavlink_channel_t chan, uint32_t
 /**
  * @brief Get field Poti_Left from twist_angle message
  *
- * @return Timestamp 
+ * @return si_value of the left poti 
  */
-static inline uint32_t mavlink_msg_twist_angle_get_Poti_Left(const mavlink_message_t* msg)
+static inline float mavlink_msg_twist_angle_get_Poti_Left(const mavlink_message_t* msg)
 {
-	return _MAV_RETURN_uint32_t(msg,  0);
+	return _MAV_RETURN_float(msg,  0);
 }
 
 /**
  * @brief Get field Poti_Right from twist_angle message
  *
- * @return Timestamp 
+ * @return si_value of the right poti 
  */
-static inline uint32_t mavlink_msg_twist_angle_get_Poti_Right(const mavlink_message_t* msg)
+static inline float mavlink_msg_twist_angle_get_Poti_Right(const mavlink_message_t* msg)
 {
-	return _MAV_RETURN_uint32_t(msg,  4);
+	return _MAV_RETURN_float(msg,  4);
 }
 
 /**
  * @brief Get field Rel_Angle from twist_angle message
  *
- * @return Timestamp 
+ * @return relative Angle between the potis 
  */
-static inline uint32_t mavlink_msg_twist_angle_get_Rel_Angle(const mavlink_message_t* msg)
+static inline float mavlink_msg_twist_angle_get_Rel_Angle(const mavlink_message_t* msg)
 {
-	return _MAV_RETURN_uint32_t(msg,  8);
-}
-
-/**
- * @brief Get field PID_Angle from twist_angle message
- *
- * @return Timestamp 
- */
-static inline uint32_t mavlink_msg_twist_angle_get_PID_Angle(const mavlink_message_t* msg)
-{
-	return _MAV_RETURN_uint32_t(msg,  12);
+	return _MAV_RETURN_float(msg,  8);
 }
 
 /**
@@ -236,7 +215,6 @@ static inline void mavlink_msg_twist_angle_decode(const mavlink_message_t* msg, 
 	twist_angle->Poti_Left = mavlink_msg_twist_angle_get_Poti_Left(msg);
 	twist_angle->Poti_Right = mavlink_msg_twist_angle_get_Poti_Right(msg);
 	twist_angle->Rel_Angle = mavlink_msg_twist_angle_get_Rel_Angle(msg);
-	twist_angle->PID_Angle = mavlink_msg_twist_angle_get_PID_Angle(msg);
 #else
 	memcpy(twist_angle, _MAV_PAYLOAD(msg), MAVLINK_MSG_ID_TWIST_ANGLE_LEN);
 #endif
