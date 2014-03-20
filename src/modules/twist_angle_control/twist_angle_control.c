@@ -83,7 +83,7 @@ static int parameters_update(const struct twist_angle_control_param_handles *h,
 int twist_angle_control(
 		const struct vehicle_paraglider_angle_s *angle_measurement,
 		const struct manual_control_setpoint_s *manual_sp,
-		struct actuator_controls_s *actuators, struct debug_key_value_s *dbg) {
+		struct actuator_controls_s *actuators) {
 	/*
 	 *    0  -  roll   (-1..+1)
 	 *    1  -  pitch  (-1..+1)
@@ -134,7 +134,6 @@ int twist_angle_control(
 	/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer left[rad] - Value of the Potentiometer right[rad] */
 	float actual_twist_ang = ((angle_measurement->si_units[1])
 			- (angle_measurement->si_units[0]));
-	dbg->value = actual_twist_ang;
 
 	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 	float reference_twist_ang = (manual_sp->yaw / RCPROPO) * MAX_ANG_SP; /* generate a reference_twist_ang. yaw/RCPROPO generate -1..1 setpoint */
