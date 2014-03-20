@@ -27,7 +27,7 @@
 #define DT_MIN (0.0025f)	// Defines the Frequenz of the controller, should not higher than 400Hz
 #define MAX_ANG_SP (0.8f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
 #define RCPROPO	(0.65f)	// That's the proportion between rc signal input with 152% from radio control and 100% radio control (152%=2155;100%=1936)
-#define debug (1)			// if 1 the printf() is on
+#define debug (0)			// if 1 the printf() is on
 // twist angle control parameters
 PARAM_DEFINE_FLOAT(TWISTANGLE_P, 1.0);
 PARAM_DEFINE_FLOAT(TWISTANGLE_I, 0.0f);
@@ -83,7 +83,7 @@ static int parameters_update(const struct twist_angle_control_param_handles *h,
 int twist_angle_control(
 		const struct vehicle_paraglider_angle_s *angle_measurement,
 		const struct manual_control_setpoint_s *manual_sp,
-		struct actuator_controls_s *actuators) {
+		struct actuator_controls_s *actuators, struct debug_key_value_s *dbg) {
 	/*
 	 *    0  -  roll   (-1..+1)
 	 *    1  -  pitch  (-1..+1)
@@ -134,14 +134,15 @@ int twist_angle_control(
 	/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer left[rad] - Value of the Potentiometer right[rad] */
 	float actual_twist_ang = ((angle_measurement->si_units[1])
 			- (angle_measurement->si_units[0]));
+	dbg->value = actual_twist_ang;
 
 	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 	float reference_twist_ang = (manual_sp->yaw / RCPROPO) * MAX_ANG_SP; /* generate a reference_twist_ang. yaw/RCPROPO generate -1..1 setpoint */
 	actuators->control[2] = (pid_calculate(&twist_angle_controller,
 			reference_twist_ang, actual_twist_ang, 0, deltaT) / (MAX_ANG_SP))
-			* (RCPROPO);//use PID-Controller lib pid.h. The RC-Signal from yaw is from -0.65..0.65 because of RC_MIN/MAX config. Generate the same one with RCPROPO
+			* (RCPROPO); //use PID-Controller lib pid.h. The RC-Signal from yaw is from -0.65..0.65 because of RC_MIN/MAX config. Generate the same one with RCPROPO
 
-	if (debug) { //just for debuging
+	if (debug) { //just for debugging
 		if (counter % 1000 == 0) {
 			printf(
 					"actuator_output (yaw, CH2) = %.3f, manual_setpoint = %.3f, actual_twist_angel = %.3f\n",

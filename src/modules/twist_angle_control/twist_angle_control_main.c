@@ -22,7 +22,7 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
-//#include <uORB/topics/debug_key_value.h>
+#include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
 #include <systemlib/perf_counter.h>
@@ -72,6 +72,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 	memset(&manual_sp, 0, sizeof(manual_sp));
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
+	struct debug_key_value_s dbg = { .key = "twist_ang", .value = 0.0f };
 	//struct vehicle_status_s vstatus;
 	//memset(&vstatus, 0, sizeof(vstatus));
 
@@ -86,6 +87,9 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 	}
 
 	orb_advert_t actuator_pub = orb_advertise(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, &actuators);
+
+	/* advertise debug value */
+	orb_advert_t pub_dbg = orb_advertise(ORB_ID(debug_key_value), &dbg);
 
 	/* subscribe */
 	int rel_ang_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
@@ -135,7 +139,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 
 			if (control_mode.flag_control_attitude_enabled) {	// todo governor mode sets rpm
 
-				twist_angle_control(&angle_measurement, &manual_sp, &actuators);	//actuators.control[2] is set here
+				twist_angle_control(&angle_measurement, &manual_sp, &actuators, &dbg);	//actuators.control[2] is set here
 
 				/* pass through other channels */
 				actuators.control[0] = manual_sp.roll;
@@ -143,17 +147,19 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 				actuators.control[3] = manual_sp.throttle;
 
 				/*todo*/
-				if (counter % 1000 == 0) {	// debug
-					printf("Regler\n");
-					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
-					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
-					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
-					printf("actuator output CH3 = %.3f\n",actuators.control[3]);
-					printf("manual setpoint roll = %.3f\n",manual_sp.roll);
-					printf("manual setpoint pitch = %.3f\n",manual_sp.pitch);
-					printf("manual setpoint yaw = %.3f\n",manual_sp.yaw);
-					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
-				}
+					/* send one value */
+
+
+//					printf("Regler\n");
+//					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
+//					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
+//					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
+//					printf("actuator output CH3 = %.3f\n",actuators.control[3]);
+//					printf("manual setpoint roll = %.3f\n",manual_sp.roll);
+//					printf("manual setpoint pitch = %.3f\n",manual_sp.pitch);
+//					printf("manual setpoint yaw = %.3f\n",manual_sp.yaw);
+//					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
+
 				/*end todo*/
 
 			} else {											// todo manual mode passes all channels
@@ -166,15 +172,15 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 
 				/*todo*/
 				if (counter % 1000 == 0) {	// debug
-					printf("Manual\n");
-					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
-					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
-					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
-					printf("actuator output CH3 = %.3f\n",actuators.control[3]);
-					printf("manual setpoint roll = %.3f\n",manual_sp.roll);
-					printf("manual setpoint pitch = %.3f\n",manual_sp.pitch);
-					printf("manual setpoint yaw = %.3f\n",manual_sp.yaw);
-					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
+//					printf("Manual\n");
+//					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
+//					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
+//					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
+//					printf("actuator output CH3 = %.3f\n",actuators.control[3]);
+//					printf("manual setpoint roll = %.3f\n",manual_sp.roll);
+//					printf("manual setpoint pitch = %.3f\n",manual_sp.pitch);
+//					printf("manual setpoint yaw = %.3f\n",manual_sp.yaw);
+//					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
 				}
 				/*end todo*/
 
@@ -191,6 +197,7 @@ int twist_angle_control_thread_main(int argc, char *argv[])
 		} else {
 			printf("actuator not finite");
 		}
+		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
 		counter++;
 	} // exit: while loop
 
