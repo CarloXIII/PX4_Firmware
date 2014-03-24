@@ -1,18 +1,17 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dieses Script macht aus der .csv - Datei brauchbare Daten und        %
+% Dieses Script importiert die vorhandenen Daten der .bin - Datei und  %
 % speichert diese in eine mat-Datei ab. Ausserdem wird hier geplottet  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    Writer:        Walter von Matt                                    %
-%    Email:         walti.vonmatt@bluewin.ch                           %
-%                   walter.vonmatt@stud.hslu.ch                        %
+%                   Lukas Köpfli                                       %
 %    Organisation:  HSLU                                               %
-%    Date:          Oktober 2013                                       %
+%    Date:          März 2014                                          %
 %    Version:       V4.1                                               %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 1)  Erklärungen der Variablen und Normeinheiten
 % 2)  Variablendeklarationen (Abtastzeit definieren)
-% 3)  Daten werden eingelesen und in Spaltenvektoren gespeichert. Die   %
-%     ladende Datei heisst 'data.csv'.                                  %
+% 3)  Daten werden eingelesen und in Spaltenvektoren gespeichert. Die   
+%     ladende Datei heisst 'data.csv'.                                  
 % 4)  Der Datensatz wird skalierent
 % 5)  Der Datensatz wird interpoliert
 % 6)  Alle "NAN" Werte werden durch 0 ersetzt
@@ -63,44 +62,37 @@ format compact;
 %  lat      ¦ [%]      ¦  Differentiell    ¦ Differentielle Anregung
 %  long     ¦ [%]      ¦  Proportionall    ¦ Parallele Anregung
 
-%  -----------------------------------------------
-%  Kanal    ¦ PWM - Kanal ¦  Funktion            ¦
-%  -----------------------------------------------
-%  1        ¦ RC_Ch0      ¦  Heck Servo          ¦
-%  4        ¦ RC_Ch3      ¦  Bremsleine links    ¦
-%  5        ¦ RC_Ch4      ¦  Bremsleine rechts   ¦
-%  7        ¦ RC_Ch6      ¦  Motor links         ¦
-%  8        ¦ RC_Ch7      ¦  Motor rechts        ¦
+%  ---------------------------------------------------------------
+%  Kanal    ¦ Variable    ¦  Funktion            ¦  Zugehörigkeit ¦
+%  ---------------------------------------------------------------
+%  1        ¦ RC_Ch0      ¦  Roll/Querruder      ¦  PX4
+%  2        ¦ RC_Ch1      ¦  Nick/Höhenruder     ¦  PX4
+%  3        ¦ RC_Ch2      ¦  Schub/Gas           ¦  PX4
+%  4        ¦ RC_Ch3      ¦  Gier/Seitenruder    ¦  PX4
+%  5        ¦ RC_Ch4      ¦  Main Mode Switch    ¦  PX4
+%  6        ¦ RC_Ch5      ¦  Assist Switch       ¦  PX4
+%  7        ¦ RC_Ch6      ¦  Heck Servo          ¦  Paraglider
+%  8        ¦ RC_Ch7      ¦  Bremsleine links    ¦  Paraglider
+%  9        ¦ RC_Ch8      ¦  Bremsleine rechts   ¦  Paraglider
+% 10        ¦ RC_Ch9      ¦  Motor links         ¦  Paraglider
+% 11        ¦ RC_Ch10     ¦  Motor rechts        ¦  Paraglider
+% 12        ¦ RC_Ch11     ¦  Empfangsweiche      ¦  Paraglider
+
+%  -----------------------------------
+%  Variable    ¦  Funktion            ¦
+%  -----------------------------------
+%  OUT0_Out0   ¦  Heck Servo
+%  OUT0_Out1   ¦  Bremsleine links
+%  OUT0_Out2   ¦  Bremsleine rechts
+%  OUT0_Out3   ¦  Motor links
+%  OUT0_Out4   ¦  Motor rechts
 
 %% 2)   Abtastzeit definieren
 % Abtastfrequenz vom Px4 Board : 50Hz
 % Abtastfrequenz vom Xsens     : 50Hz
-Ts = 1 / 100;
-figure(1);
-
-% Anfang und Schluss wegschneiden
-% Länge der Daten: Excel öffnen und Zeilen * Ts rechnen.
-StartZeit = 50240;
-EndZeit   = 91640;
+Ts = 1 / 50;
 
 %% 3)   Einlesen der Daten (Nur das erste Mal nötig)
-
-% % Variablen initialisieren
-% filename = 'flug2.csv';
-% delimiter = ';';
-% startRow = 2;
-% %formatSpec = '%f%f%f%f%f%f%f%f%s%s%s%s%s%f%f%f%f%f%f%f%f%f%f%f%f%f%f%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
-% formatSpec = '%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%f%[^\n\r]';
-% % File öffnen
-% fileID = fopen(filename,'r');
-%
-% % Kollonenen lesen
-% %dataArray = textscan(fileID, formatSpec, 'Delimiter', delimiter, 'EmptyValue' ,0,'HeaderLines' ,startRow-1, 'ReturnOnError', false);
-% %dataArray = textscan(fileID, formatSpec, 'Delimiter', delimiter, 'EmptyValue' ,NaN, 'ReturnOnError', false);
-% dataArray = textscan(fileID, formatSpec, 'Delimiter', delimiter, 'EmptyValue' ,0,'HeaderLines' ,startRow-1, 'ReturnOnError', false);
-%
-% % Textfile schliessen
-% fclose(fileID);
 
 % ************************************************************************
 % SETTINGS
@@ -125,7 +117,6 @@ fconv_timestamp=1E-6; % [microseconds] to [seconds]
 % //All measurements in NED frame
 
 % Convert to CSV
-%arg1 = 'log-fx61-20130721-2.bin';
 arg1 = filePath;
 delim = ',';
 time_field = 'TIME';
@@ -262,6 +253,7 @@ RC_Ch10 = sysvector.RC_Ch10(imintime:imaxtime);
 RC_Ch11 = sysvector.RC_Ch11(imintime:imaxtime);
 RC_Count = sysvector.RC_Count(imintime:imaxtime);
 OUT0_Time = sysvector.OUT0_Time(imintime:imaxtime);
+OUT0_Out0 = sysvector.OUT0_Out0(imintime:imaxtime);
 OUT0_Out1 = sysvector.OUT0_Out1(imintime:imaxtime);
 OUT0_Out2 = sysvector.OUT0_Out2(imintime:imaxtime);
 OUT0_Out3 = sysvector.OUT0_Out3(imintime:imaxtime);
@@ -995,7 +987,6 @@ if (1==2)
 end
 
 %% ------------------------------------------------------------------------
-if (1==2);
     
     %% PLOT - Motoren / Servos
     figure(1);
@@ -1260,45 +1251,7 @@ if (1==2);
     plot(Zeit, [S_Servo_Differentiel, S_Servo_Parallel, data_Xsens_XATT_Roll, data_Px4_ATT_Roll])
     legend('Servo links', 'Servo rechts','Xsens Roll', 'Px4 Roll'); grid on;; title('Servos Bremsleinen');
     xlabel('Zeitvektor [s]'); ylabel('Eingänge [%], Winkel [rad]');
-    
-    %% PLOT - Test
-    subplot(2,1,1);
-    plot(Zeit, [data_In_Servo_Links, data_In_Servo_Rechts])
-    legend('A1 Servo links', 'A2 Servo rechts'); grid on;; title('Aktuatoren (effektives PWM am Servo)');
-    xlabel('Zeitvektor [s]'); ylabel('PWM [%]');
-    subplot(2,1,2);
-    plot(Zeit, [S_Servo_Differentiel, S_Servo_Parallel])
-    legend('S1 Differentiel', 'S2 Parallel'); grid on;; title('Steuereingang Servo (Ansteuerung durch Fernbedienung)');
-    xlabel('Zeitvektor [s]'); ylabel('PWM [%]');
-    
-    
-    
-    %% Exponentielle Kurve
-    exp_wmin = 2*pi*1/2;
-    exp_wmax = 2*pi*1/8;
-    
-    t_exp  = (1:0.01:90);
-    t_boe  = (exp_wmax+(sqrt(exp_wmin) - exp_wmax)/length(t_exp):(sqrt(exp_wmin) - exp_wmax)/length(t_exp):sqrt(exp_wmin));
-    s_exp  = t_boe.^2;
-    %s_lin  = ((max(s_exp)/length(t_exp)):(max(s_exp)/length(t_exp)):max(s_exp));
-    s_lin  = (exp_wmax+(exp_wmin - exp_wmax)/length(t_exp):(exp_wmin - exp_wmax)/length(t_exp):exp_wmin);
-    
-    hold on;
-    plot(t_exp, s_lin, 'g')
-    plot(t_exp, s_exp)
-    grid on; xlabel('Zeitvektor [s]'); ylabel('Kreisfrequenz [rad/s]');
-    
-    %%
-    subplot(1,1,1);
-    plot(TIME_StartTime/1000000, [RC_Ch3_scaled, RC_Ch4_scaled])
-    h_legend = legend('Bremsleinenservo links', 'Bremsleinenservo rechts');
-    set(h_legend,'FontSize',16);
-    grid on;
-    title('Ausschnitt einer Sweep-Anregung der Bremsleinenservos','fontSize',16);
-    xlabel('Zeit [s]','fontSize',16);
-    ylabel('PWM [ -1...1 ]','fontSize',16);
-    set(gca,'FontSize',16)
-    
+          
     %% PLOT Logging Frequenz
     fail10 = 0;
     fail20 = 0;
@@ -1344,20 +1297,4 @@ if (1==2);
     ylabel('Zeitdifferenz [ms]','fontSize',16)
     set(gca,'FontSize',16)
     grid on
-    axis([-Inf EndZeit Abtast max(TIME_diff)])
-    
-    %% PLOT Logging Frequenz Xsens GPS POS
-    Datensatz = XGPS_POS_t;
-    for i = 1:length(Datensatz)-1
-        TIME_diff(i) = (Datensatz(i+1) - Datensatz(i))/1000;
-    end
-    plot(1:length(Datensatz)-1,TIME_diff,'+')
-    str = sprintf('Zeitdifferenz zwischen zwei neuen GPS Einträgen der Xsens Einheit');
-    title(str,'fontSize',16);
-    xlabel('Logging-Eintrag [n]','fontSize',16)
-    ylabel('Zeitdifferenz [ms]','fontSize',16)
-    set(gca,'FontSize',16)
-    grid on
-    axis([-Inf length(TIME_diff) 180 320])
-    
-end
+    axis([-Inf EndZeit Abtast max(TIME_diff)])  
