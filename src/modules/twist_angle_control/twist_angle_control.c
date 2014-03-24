@@ -27,7 +27,7 @@
 #define DT_MIN (0.0025f)	// Defines the Frequenz of the controller, should not higher than 400Hz
 #define MAX_ANG_SP (0.8f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
 #define RCPROPO	(0.65f)	// That's the proportion between rc signal input with 152% from radio control and 100% radio control (152%=2155;100%=1936)
-#define debug (0)			// if 1 the printf() is on
+
 // twist angle control parameters
 PARAM_DEFINE_FLOAT(TWISTANGLE_P, 1.0);
 PARAM_DEFINE_FLOAT(TWISTANGLE_I, 0.0f);
@@ -118,12 +118,13 @@ int twist_angle_control(
 		pid_set_parameters(&twist_angle_controller, p.twist_angle_p,
 				p.twist_angle_i, p.twist_angle_d, p.integral_limiter,
 				MAX_ANG_SP);
-		if (debug) { //just for debuging
-			if (counter % 1000 == 0) {
-				printf("param updated: p = %f, i=%f, d=%f\n", p.twist_angle_p,
-						p.twist_angle_i, p.twist_angle_d);
-			}
+#if (DEBUG)  //just for debuging
+		if (counter % 1000 == 0) {
+			printf("param updated: p = %f, i=%f, d=%f\n", p.twist_angle_p,
+					p.twist_angle_i, p.twist_angle_d);
 		}
+
+#endif
 	}
 
 	// measure time for PID-controller
@@ -141,7 +142,7 @@ int twist_angle_control(
 			reference_twist_ang, actual_twist_ang, 0, deltaT) / (MAX_ANG_SP))
 			* (RCPROPO); //use PID-Controller lib pid.h. The RC-Signal from yaw is from -0.65..0.65 because of RC_MIN/MAX config. Generate the same one with RCPROPO
 
-	if (debug) { //just for debugging
+#if (DEBUG)  //just for debugging
 		if (counter % 1000 == 0) {
 			printf(
 					"actuator_output (yaw, CH2) = %.3f, manual_setpoint = %.3f, actual_twist_angel = %.3f\n",
@@ -152,7 +153,8 @@ int twist_angle_control(
 					actuators->control[0], actuators->control[1],
 					actuators->control[3]);
 		}
-	}
+
+#endif
 
 	counter++;
 	return 0;
