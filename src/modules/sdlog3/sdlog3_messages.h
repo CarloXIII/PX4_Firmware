@@ -394,7 +394,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(FLOW, "QhhfffBB", "Time,RawX,RawY,CompX,CompY,Dist,Q,SensID"),
 	LOG_FORMAT(GPOS, "QLLfffffB", "Time,Lat,Lon,Alt,VelN,VelE,VelD,BaroAlt,Flags"),
 	LOG_FORMAT(GPSP, "BLLffBfbf", "NavState,Lat,Lon,Alt,Yaw,Type,LoitR,LoitDir,PitMin"),
-	LOG_FORMAT(ESC, "QHBBBHHHHHHfH", "Time,Counter,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
+	LOG_FORMAT(ESC, "QHBBBHHHHHHfH", "Time,Cnt,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
 	LOG_FORMAT(GVSP, "fff", "VX,VY,VZ"),
 	LOG_FORMAT(BATT, "Qffff", "Time,V,VFilt,C,Discharged"),
 	/* TODO NEW ENTRY

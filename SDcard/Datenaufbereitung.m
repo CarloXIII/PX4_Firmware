@@ -177,7 +177,6 @@ CurTime=mintime_log;        %The current time at which to draw the aircraft posi
 
 % Datenarray erstellen anhand der Headers
 % und sogleich Anfang und Ende wegschneiden
-TIME_StartTime = sysvector.TIME_StartTime(imintime:imaxtime);
 ATT_Time = sysvector.ATT_Time(imintime:imaxtime);
 ATT_Roll = sysvector.ATT_Roll(imintime:imaxtime);
 ATT_Pitch = sysvector.ATT_Pitch(imintime:imaxtime);
@@ -185,6 +184,9 @@ ATT_Yaw = sysvector.ATT_Yaw(imintime:imaxtime);
 ATT_RollRate = sysvector.ATT_RollRate(imintime:imaxtime);
 ATT_PitchRate = sysvector.ATT_PitchRate(imintime:imaxtime);
 ATT_YawRate = sysvector.ATT_YawRate(imintime:imaxtime);
+ATT_GX = sysvector.ATT_GX(imintime:imaxtime);
+ATT_GY = sysvector.ATT_GY(imintime:imaxtime);
+ATT_GZ = sysvector.ATT_GZ(imintime:imaxtime);
 ATSP_Time = sysvector.ATSP_Time(imintime:imaxtime);
 ATSP_RollSP = sysvector.ATSP_RollSP(imintime:imaxtime);
 ATSP_PitchSP = sysvector.ATSP_PitchSP(imintime:imaxtime);
@@ -289,6 +291,8 @@ GPOS_Alt = sysvector.GPOS_Alt(imintime:imaxtime);
 GPOS_VelN = sysvector.GPOS_VelN(imintime:imaxtime);
 GPOS_VelE = sysvector.GPOS_VelE(imintime:imaxtime);
 GPOS_VelD = sysvector.GPOS_VelD(imintime:imaxtime);
+GPOS_BaroAlt = sysvector.GPOS_BaroAlt(imintime:imaxtime);
+GPOS_Flags = sysvector.GPOS_Flags(imintime:imaxtime);
 GPSP_NavState = sysvector.GPSP_NavState(imintime:imaxtime);
 GPSP_Lat = sysvector.GPSP_Lat(imintime:imaxtime);
 GPSP_Lon = sysvector.GPSP_Lon(imintime:imaxtime);
@@ -314,6 +318,11 @@ ESC_SetPRAW = sysvector.ESC_SetPRAW(imintime:imaxtime);
 GVSP_VX = sysvector.GVSP_VX(imintime:imaxtime);
 GVSP_VY = sysvector.GVSP_VY(imintime:imaxtime);
 GVSP_VZ = sysvector.GVSP_VZ(imintime:imaxtime);
+BATT_Time = sysvector.BATT_Time(imintime:imaxtime);
+BATT_V = sysvector.BATT_V(imintime:imaxtime);
+BATT_VFilt = sysvector.BATT_VFilt(imintime:imaxtime);
+BATT_C = sysvector.BATT_C(imintime:imaxtime);
+BATT_Discharged = sysvector.BATT_Discharged(imintime:imaxtime);
 XIMU_Time = sysvector.XIMU_Time(imintime:imaxtime);
 XIMU_AccX = sysvector.XIMU_AccX(imintime:imaxtime);
 XIMU_AccY = sysvector.XIMU_AccY(imintime:imaxtime);
@@ -358,10 +367,11 @@ XGPO_VelD = sysvector.XGPO_VelD(imintime:imaxtime);
 RANG_Time = sysvector.RANG_Time(imintime:imaxtime);
 RANG_Ang_l = sysvector.RANG_Ang_l(imintime:imaxtime);
 RANG_Ang_r = sysvector.RANG_Ang_r(imintime:imaxtime);
+TIME_StartTime = sysvector.TIME_StartTime(imintime:imaxtime);
+VER_Arch = sysvector.VER_Arch(imintime:imaxtime);
 VER_FwGit = sysvector.VER_FwGit(imintime:imaxtime);
-
-% Temporäre Variablen löschen
-% clearvars filename delimiter startRow formatSpec fileID dataArray ans;
+PARM_Name = sysvector.PARM_Name(imintime:imaxtime);
+PARM_Value = sysvector.PARM_Value(imintime:imaxtime);
 
 %% ------------------------------------------------------------------------
 %% 4)   Datensatz skalieren
