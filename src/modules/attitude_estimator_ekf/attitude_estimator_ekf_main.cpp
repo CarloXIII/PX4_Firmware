@@ -38,6 +38,8 @@
  *
  * Extended Kalman Filter for Attitude Estimation.
  */
+// todo Carlo: Makro zum wählen der Sensor-Daten Quelle
+#define PARAM_SOURCE_XSENS (1)
 
 #include <nuttx/config.h>
 #include <unistd.h>
@@ -55,11 +57,22 @@
 #include <math.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/debug_key_value.h>
-#include <uORB/topics/sensor_combined.h>
-#include <uORB/topics/vehicle_attitude.h>
-#include <uORB/topics/vehicle_control_mode.h>
-#include <uORB/topics/vehicle_gps_position.h>
-#include <uORB/topics/vehicle_global_position.h>
+
+#if PARAM_SOURCE_XSENS
+	#include <uORB/topics/xsens_sensor_combined.h>
+	#include <uORB/topics/xsens_vehicle_attitude.h>
+	#include <uORB/topics/vehicle_control_mode.h>
+	#include <uORB/topics/xsens_vehicle_gps_position.h>
+	#include <uORB/topics/xsens_vehicle_global_position.h>
+#else
+	#include <uORB/topics/sensor_combined.h>
+	#include <uORB/topics/vehicle_attitude.h>
+	#include <uORB/topics/vehicle_control_mode.h>
+	#include <uORB/topics/vehicle_gps_position.h>
+	#include <uORB/topics/vehicle_global_position.h>
+
+#endif
+
 #include <uORB/topics/parameter_update.h>
 #include <drivers/drv_hrt.h>
 
@@ -80,6 +93,8 @@ extern "C" {
 #endif
 
 extern "C" __EXPORT int attitude_estimator_ekf_main(int argc, char *argv[]);
+
+
 
 static bool thread_should_exit = false;		/**< Deamon exit flag */
 static bool thread_running = false;		/**< Deamon status flag */
@@ -216,7 +231,23 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 	/* store start time to guard against too slow update rates */
 	uint64_t last_run = hrt_absolute_time();
 
-	struct sensor_combined_s raw;
+	/*
+	 * todo Carlo: Initialisierung des Kalmann-Filters mit Werten des XSENS-Sensors oder der
+	 * Onboard-Sensoren
+	 */
+#if PARAM_SOURCE_XSENS
+	struct xsens_sensor_combined_s raw;
+	memset(&raw, 0, sizeof(raw));
+	struct xsens_vehicle_gps_position_s gps;
+	memset(&gps, 0, sizeof(gps));
+	struct xsens_vehicle_global_position_s global_pos;
+	memset(&global_pos, 0, sizeof(global_pos));
+	struct xsens_vehicle_attitude_s att;
+	memset(&att, 0, sizeof(att));
+	struct vehicle_control_mode_s control_mode;
+	memset(&control_mode, 0, sizeof(control_mode));
+#else
+	struct xsens_sensor_combined_s raw;
 	memset(&raw, 0, sizeof(raw));
 	struct vehicle_gps_position_s gps;
 	memset(&gps, 0, sizeof(gps));
@@ -226,7 +257,7 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 	memset(&att, 0, sizeof(att));
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
-
+#endif
 	uint64_t last_data = 0;
 	uint64_t last_measurement = 0;
 	uint64_t last_vel_t = 0;
@@ -244,13 +275,37 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 	math::Matrix<3, 3> R;
 	R.identity();
 
+	/*
+	 * todo CARLO subscriptions auf werte des XSENS sensors umgeleitet
+	 */
+#if PARAM_SOURCE_XSENS
+	/* subscribe to raw data */
+	int sub_raw = orb_subscribe(ORB_ID(xsens_sensor_combined));
+	/* rate-limit raw data updates to 333 Hz (sensors app publishes at 200, so this is just paranoid) */
+	orb_set_interval(sub_raw, 3);
+
+	/* subscribe to GPS */
+	int sub_gps = orb_subscribe(ORB_ID(xsens_vehicle_gps_position));
+
+	/* subscribe to GPS */
+	int sub_global_pos = orb_subscribe(ORB_ID(xsens_vehicle_global_position));
+
+	/* subscribe to param changes */
+	int sub_params = orb_subscribe(ORB_ID(parameter_update));
+
+	/* subscribe to control mode*/
+	int sub_control_mode = orb_subscribe(ORB_ID(vehicle_control_mode));
+
+	/* advertise attitude */
+	orb_advert_t pub_att = orb_advertise(ORB_ID(xsens_vehicle_attitude), &att);
+#else
 	/* subscribe to raw data */
 	int sub_raw = orb_subscribe(ORB_ID(sensor_combined));
 	/* rate-limit raw data updates to 333 Hz (sensors app publishes at 200, so this is just paranoid) */
 	orb_set_interval(sub_raw, 3);
 
 	/* subscribe to GPS */
-	int sub_gps = orb_subscribe(ORB_ID(vehicle_gps_position));
+	int sub_gps = orb_subscribe(ORB_ID(vehicle_gps_position))
 
 	/* subscribe to GPS */
 	int sub_global_pos = orb_subscribe(ORB_ID(vehicle_global_position));
@@ -264,6 +319,7 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 	/* advertise attitude */
 	orb_advert_t pub_att = orb_advertise(ORB_ID(vehicle_attitude), &att);
 
+#endif
 	int loopcounter = 0;
 	int printcounter = 0;
 
@@ -339,6 +395,22 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 			/* only run filter if sensor values changed */
 			if (fds[0].revents & POLLIN) {
 
+#if PARAM_SOURCE_XSENS
+				/* get latest measurements */
+				orb_copy(ORB_ID(xsens_sensor_combined), sub_raw, &raw);
+
+				bool gps_updated;
+				orb_check(sub_gps, &gps_updated);
+				if (gps_updated) {
+					orb_copy(ORB_ID(xsens_vehicle_gps_position), sub_gps, &gps);
+				}
+
+				bool global_pos_updated;
+				orb_check(sub_global_pos, &global_pos_updated);
+				if (global_pos_updated) {
+					orb_copy(ORB_ID(xsens_vehicle_global_position), sub_global_pos, &global_pos);
+				}
+#else
 				/* get latest measurements */
 				orb_copy(ORB_ID(sensor_combined), sub_raw, &raw);
 
@@ -353,7 +425,7 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 				if (global_pos_updated) {
 					orb_copy(ORB_ID(vehicle_global_position), sub_global_pos, &global_pos);
 				}
-
+#endif
 				if (!initialized) {
 					// XXX disabling init for now
 					initialized = true;
@@ -409,8 +481,18 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 							vel(1) = gps.vel_e_m_s;
 							vel(2) = gps.vel_d_m_s;
 						}
+#if PARAM_SOURCE_XSENS
+						} else if (ekf_params.acc_comp == 2 && global_pos.valid && hrt_absolute_time() < global_pos.timestamp + 500000) {
+						vel_valid = true;
+						if (global_pos_updated) {
+							vel_t = global_pos.timestamp;
+							vel(0) = global_pos.vx;
+							vel(1) = global_pos.vy;
+							vel(2) = global_pos.vz;
+						}
 
-					} else if (ekf_params.acc_comp == 2 && global_pos.global_valid && hrt_absolute_time() < global_pos.timestamp + 500000) {
+#else
+						} else if (ekf_params.acc_comp == 2 && global_pos.global_valid && hrt_absolute_time() < global_pos.timestamp + 500000) {
 						vel_valid = true;
 						if (global_pos_updated) {
 							vel_t = global_pos.timestamp;
@@ -418,6 +500,8 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 							vel(1) = global_pos.vel_e;
 							vel(2) = global_pos.vel_d;
 						}
+#endif
+
 					}
 
 					if (vel_valid) {
@@ -534,11 +618,11 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 					att.rollacc = x_aposteriori[3];
 					att.pitchacc = x_aposteriori[4];
 					att.yawacc = x_aposteriori[5];
-
+#if !PARAM_SOURCE_XSENS
 					att.g_comp[0] = raw.accelerometer_m_s2[0] - acc(0);
 					att.g_comp[1] = raw.accelerometer_m_s2[1] - acc(1);
 					att.g_comp[2] = raw.accelerometer_m_s2[2] - acc(2);
-
+#endif
 					/* copy offsets */
 					memcpy(&att.rate_offsets, &(x_aposteriori[3]), sizeof(att.rate_offsets));
 
@@ -553,8 +637,12 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 
 					if (isfinite(att.roll) && isfinite(att.pitch) && isfinite(att.yaw)) {
 						// Broadcast
+#if PARAM_SOURCE_XSENS
+						orb_publish(ORB_ID(xsens_vehicle_attitude), pub_att, &att);
+						// evtl auch vehicle_attitude publish
+#else
 						orb_publish(ORB_ID(vehicle_attitude), pub_att, &att);
-
+#endif
 					} else {
 						warnx("NaN in roll/pitch/yaw estimate!");
 					}
