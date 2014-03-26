@@ -792,7 +792,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 		struct airspeed_s airspeed;
 		struct esc_status_s esc;
 		struct vehicle_global_velocity_setpoint_s global_vel_sp;
-		struct battery_status_s battery;
+//		struct battery_status_s battery;
 
 		/*
 		 * TODO NEW ENTRY
@@ -831,7 +831,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 			struct log_GPSP_s log_GPSP;
 			struct log_ESC_s log_ESC;
 			struct log_GVSP_s log_GVSP;
-			struct log_BATT_s log_BATT;
+//			struct log_BATT_s log_BATT;
 
 			/*
 			 * TODO NEW ENTRY
@@ -870,7 +870,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 		int airspeed_sub;
 		int esc_sub;
 		int global_vel_sp_sub;
-		int battery_sub;
+//		int battery_sub;
 
 		/*
 		 * TODO NEW ENTRY
@@ -903,7 +903,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 	subs.airspeed_sub = orb_subscribe(ORB_ID(airspeed));
 	subs.esc_sub = orb_subscribe(ORB_ID(esc_status));
 	subs.global_vel_sp_sub = orb_subscribe(ORB_ID(vehicle_global_velocity_setpoint));
-	subs.battery_sub = orb_subscribe(ORB_ID(battery_status));
+//	subs.battery_sub = orb_subscribe(ORB_ID(battery_status));
 	/*
 	 * TODO NEW ENTRY
 	 * Add here your new entry as above
@@ -1260,16 +1260,16 @@ int sdlog3_thread_main(int argc, char *argv[])
 			LOGBUFFER_WRITE_AND_COUNT(GVSP);
 		}
 
-		/* --- BATTERY --- */
-		if (copy_if_updated(ORB_ID(battery_status), subs.battery_sub, &buf.battery)) {
-			log_msg.msg_type = LOG_BATT_MSG;
-			log_msg.body.log_BATT.t = buf.battery.timestamp;
-			log_msg.body.log_BATT.voltage = buf.battery.voltage_v;
-			log_msg.body.log_BATT.voltage_filtered = buf.battery.voltage_filtered_v;
-			log_msg.body.log_BATT.current = buf.battery.current_a;
-			log_msg.body.log_BATT.discharged = buf.battery.discharged_mah;
-			LOGBUFFER_WRITE_AND_COUNT(BATT);
-		}
+//		/* --- BATTERY --- */
+//		if (copy_if_updated(ORB_ID(battery_status), subs.battery_sub, &buf.battery)) {
+//			log_msg.msg_type = LOG_BATT_MSG;
+//			log_msg.body.log_BATT.t = buf.battery.timestamp;
+//			log_msg.body.log_BATT.voltage = buf.battery.voltage_v;
+//			log_msg.body.log_BATT.voltage_filtered = buf.battery.voltage_filtered_v;
+//			log_msg.body.log_BATT.current = buf.battery.current_a;
+//			log_msg.body.log_BATT.discharged = buf.battery.discharged_mah;
+//			LOGBUFFER_WRITE_AND_COUNT(BATT);
+//		}
 
 			/*
 			 * TODO NEW ENTRY

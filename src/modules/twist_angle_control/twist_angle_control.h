@@ -9,7 +9,7 @@
 #ifndef TWIST_ANGLE_CONTROL_H_
 #define TWIST_ANGLE_CONTROL_H_
 
-#define DEBUG (0)
+#define DEBUG (1)
 
 #include <uORB/topics/manual_control_setpoint.h> /* use this, to get the yaw input from the radio control */
 #include <uORB/topics/vehicle_paraglider_angle.h> /* use this, to get the actual value from the potentiometers */

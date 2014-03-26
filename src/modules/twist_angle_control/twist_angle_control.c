@@ -24,8 +24,8 @@
 
 #include "twist_angle_control.h"
 
-#define DT_MIN (0.0025f)	// Defines the Frequenz of the controller, should not higher than 400Hz
-#define MAX_ANG_SP (0.8f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
+#define DT_MIN (0.01f)	// Defines the Frequenz of the controller, should not higher than 400Hz
+#define MAX_ANG_SP (0.5f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
 #define RCPROPO	(0.65f)	// That's the proportion between rc signal input with 152% from radio control and 100% radio control (152%=2155;100%=1936)
 
 // twist angle control parameters

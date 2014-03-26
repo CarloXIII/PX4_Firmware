@@ -263,15 +263,15 @@ struct log_GVSP_s {
 	float vz;
 };
 
-/* --- BATT - BATTERY --- */
-#define LOG_BATT_MSG 20
-struct log_BATT_s {
-	uint64_t t;
-	float voltage;
-	float voltage_filtered;
-	float current;
-	float discharged;
-};
+///* --- BATT - BATTERY --- */
+//#define LOG_BATT_MSG 20
+//struct log_BATT_s {
+//	uint64_t t;
+//	float voltage;
+//	float voltage_filtered;
+//	float current;
+//	float discharged;
+//};
 
 /*
  * TODO NEW ENTRY
@@ -396,7 +396,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPSP, "BLLffBfbf", "NavState,Lat,Lon,Alt,Yaw,Type,LoitR,LoitDir,PitMin"),
 	LOG_FORMAT(ESC, "QHBBBHHHHHHfH", "Time,Cnt,NumESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
 	LOG_FORMAT(GVSP, "fff", "VX,VY,VZ"),
-	LOG_FORMAT(BATT, "Qffff", "Time,V,VFilt,C,Discharged"),
+//	LOG_FORMAT(BATT, "Qffff", "Time,V,VFilt,C,Discharged"),
 	/* TODO NEW ENTRY
 	 * Put here your own construct with all message formats
 	 * The definition of the formats is given in sdlog2_format.h

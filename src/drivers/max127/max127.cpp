@@ -80,7 +80,7 @@
 
 #define MAX127_INPUT_RANGE		0		/* Defines the input range (0=0-5V ; 1=0-10V ; 2=-5-5V ; 3=-10-10V) */
 
-#define MAX127_CONVERSION_INTERVAL 100	/* Time until the IC has completed a conversion (it could be zero) 0.1ms*/
+#define MAX127_CONVERSION_INTERVAL 10000	/* Time until the IC has completed a conversion (it could be zero) 10ms*/
 
 /* Constants who are only relevant for the relative angle measurement between vehicle and paraglider */
 

@@ -18,11 +18,10 @@
 #include <arch/board/board.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/vehicle_control_mode.h>
-//#include <uORB/topics/vehicle_status.h>
+//#include <uORB/topics/vehicle_status.h> //not used yet
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
-//#include <uORB/topics/debug_key_value.h>
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
 #include <systemlib/perf_counter.h>
@@ -119,15 +118,14 @@ int twist_angle_control_thread_main(int argc, char *argv[]) {
 		 *    1  -  pitch  (-1..+1)
 		 *    2  -  yaw    (-1..+1)
 		 *    3  -  thrust ( 0..+1)
-		 *    4  -  flaps  (-1..+1)
 		 *    ...
 		 */
 		orb_copy(ORB_ID(vehicle_control_mode), control_mode_sub, &control_mode); /* update the flags for operating mode */
 		//orb_copy(ORB_ID(vehicle_status), vehicle_status_sub, &vstatus);	/* update vehicle status flags */
 
-		if (control_mode.flag_control_manual_enabled) {	// todo not jet clear
+		if (control_mode.flag_control_manual_enabled) {	//Full manual control mode
 
-			if (control_mode.flag_control_attitude_enabled) {// todo governor mode sets rpm
+			if (control_mode.flag_control_attitude_enabled) { //Yaw controller is active
 
 				twist_angle_control(&angle_measurement, &manual_sp, &actuators);//actuators.control[2] is set here
 
@@ -137,8 +135,8 @@ int twist_angle_control_thread_main(int argc, char *argv[]) {
 				actuators.control[3] = manual_sp.throttle;
 
 #if (DEBUG)
-				if (counter % 1000 == 0) {	// debug
-					printf("Regler\n");
+				if (counter % 100 == 0) {	// debug
+					printf("Controller\n");
 					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
 					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
 					printf("actuator output CH2 = %.3f\n",actuators.control[2]);
@@ -149,16 +147,15 @@ int twist_angle_control_thread_main(int argc, char *argv[]) {
 					printf("manual setpoint throttle = %.3f\n",manual_sp.throttle);
 				}
 #endif
-			} else {					// todo manual mode passes all channels
+			} else { //manual mode passes all channels
 				/* directly pass through values */
 				actuators.control[0] = manual_sp.roll;
-				/* positive pitch means negative actuator -> pull up */
 				actuators.control[1] = manual_sp.pitch;
 				actuators.control[2] = manual_sp.yaw;
 				actuators.control[3] = manual_sp.throttle;
 
 #if (DEBUG)
-				if (counter % 1000 == 0) {	// debug
+				if (counter % 100 == 0) {	// debug
 					printf("Manual\n");
 					printf("actuator output CH0 = %.3f\n",actuators.control[0]);
 					printf("actuator output CH1 = %.3f\n",actuators.control[1]);
