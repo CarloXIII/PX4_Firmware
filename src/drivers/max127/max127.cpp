@@ -84,10 +84,10 @@
 
 /* Constants who are only relevant for the relative angle measurement between vehicle and paraglider */
 
-#define RAW_AT_ZERO_LEFT 1930		/* Defines the raw value where the angle should be zero for the left potentiometer */
-#define RAW_AT_ZERO_RIGHT 1845		/* Defines the raw value where the angle should be zero for the right potentiometer */
-#define RAW_AT_PI_2_LEFT 3262		/* Defines the raw value where the angle should be pi/2 (90°) for the left potentiometer */
-#define RAW_AT_PI_2_RIGHT 3216		/* Defines the raw value where the angle should be pi/2 (90°) for the right potentiometer */
+#define RAW_AT_ZERO_LEFT 1946		/* Defines the raw value where the angle should be zero for the left potentiometer */
+#define RAW_AT_ZERO_RIGHT 1830		/* Defines the raw value where the angle should be zero for the right potentiometer */
+#define RAW_AT_PI_2_LEFT 3282		/* Defines the raw value where the angle should be pi/2 (90°) for the left potentiometer */
+#define RAW_AT_PI_2_RIGHT 3204		/* Defines the raw value where the angle should be pi/2 (90°) for the right potentiometer */
 
 
 /* oddly, ERROR is not defined for c++ */

@@ -29,10 +29,10 @@
 #define RCPROPO	(0.65f)	// That's the proportion between rc signal input with 152% from radio control and 100% radio control (152%=2155;100%=1936)
 
 // twist angle control parameters
-PARAM_DEFINE_FLOAT(TWISTANGLE_P, 1.0);
-PARAM_DEFINE_FLOAT(TWISTANGLE_I, 0.0f);
-PARAM_DEFINE_FLOAT(TWISTANGLE_D, 0.0f);
-PARAM_DEFINE_FLOAT(TWISTANGLE_INT_LIM, 0.0f);
+PARAM_DEFINE_FLOAT(TWISTANG_P, 1.0);
+PARAM_DEFINE_FLOAT(TWISTANG_I, 0.0f);
+PARAM_DEFINE_FLOAT(TWISTANG_D, 0.0f);
+PARAM_DEFINE_FLOAT(TWISTANG_INT_LIM, 0.0f);
 /* Antireset Windup */
 
 struct twist_angle_control_params {
@@ -56,10 +56,10 @@ static int parameters_update(const struct twist_angle_control_param_handles *h,
 
 static int parameters_init(struct twist_angle_control_param_handles *h) {
 	/* PID parameters */
-	h->twist_angle_p = param_find("TWISTANGLE_P");
-	h->twist_angle_i = param_find("TWISTANGLE_I");
-	h->twist_angle_d = param_find("TWISTANGLE_D");
-	h->integral_limiter = param_find("TWISTANGLE_INT_LIM");
+	h->twist_angle_p = param_find("TWISTANG_P");
+	h->twist_angle_i = param_find("TWISTANG_I");
+	h->twist_angle_d = param_find("TWISTANG_D");
+	h->integral_limiter = param_find("TWISTANG_INT_LIM");
 	return OK;
 }
 
