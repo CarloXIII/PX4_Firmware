@@ -44,7 +44,7 @@
 #define XSENS_BID 0xFF
 #define XSENS_MID 0x32
 
-#define XSENS_BAUDRATE 38400
+#define XSENS_BAUDRATE 115200
 
 #define HORIZONTAL_ACCURACY_FOR_FIX 8.0f	// This are the sigma values. Use it to define the fix_type
 #define VERTICAL_ACCURACY_FOR_FIX 12.0f	// of the xsens_vehicle_gps_position message [m]
@@ -71,7 +71,7 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 	int32_t vel_d; /**< NED down velocity, cm/s */
 	int32_t vel_e; /**< NED east velocity, cm/s */
 	int32_t vel_n; /**< NED north velocity, cm/s */
-	int32_t alt; /**< Height above mean sea level, mm */
+	int32_t alt; /**< Altitude/Height above Ellipsoid, mm */
 	int32_t lon; /**< Longitude, 1e7*deg */
 	int32_t lat; /**< Latitude, 1e7*deg */
 	uint32_t itow; /**< GPS Millisecond Time of Week, ms */
@@ -84,40 +84,40 @@ typedef struct {
 }xsens_temp_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t magz; /**< XXX */
-	float_t magy; /**< XXX */
-	float_t magx; /**< XXX */
-	float_t gyrz; /**< XXX */
-	float_t gyry; /**< XXX */
-	float_t gyrx; /**< XXX */
-	float_t accz; /**< XXX */
-	float_t accy; /**< XXX */
-	float_t accx; /**< XXX */
+	float_t magz; /**< Magnetic field z-axis [arbitrary Unit normalized to earth field strength] */
+	float_t magy; /**< Magnetic field y-axis [arbitrary Unit normalized to earth field strength] */
+	float_t magx; /**< Magnetic field x-axis [arbitrary Unit normalized to earth field strength] */
+	float_t gyrz; /**< Angular rate z-axis [rad/s] */
+	float_t gyry; /**< Angular rate y-axis [rad/s] */
+	float_t gyrx; /**< Angular rate x-axis [rad/s] */
+	float_t accz; /**< Acceleration z-axis [m/s^2] */
+	float_t accy; /**< Acceleration y-axis [m/s^2] */
+	float_t accx; /**< Acceleration x-axis [m/s^2] */
 }xsens_calibrated_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t q3; /**< XXX */
-	float_t q2; /**< XXX */
-	float_t q1; /**< XXX */
-	float_t q0; /**< XXX */
+	float_t q3; /**< Orientation quaternion format */
+	float_t q2; /**< Orientation quaternion format */
+	float_t q1; /**< Orientation quaternion format */
+	float_t q0; /**< Orientation quaternion format */
 }xsens_orientation_quaternion_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t yaw; /**< XXX */
-	float_t pitch; /**< XXX */
-	float_t roll; /**< XXX */
+	float_t yaw;	/**< yaw angle (rotation around Z) Orientation Euler angles format [deg], defined form (-180°...180°) */
+	float_t pitch;	/**< pitch angle (rotation around Y) Orientation Euler angles format [deg], defined form (-90°...90°) */
+	float_t roll;	/**< roll angle (rotation around X) Orientation Euler angles format [deg], defined form (-180°...180°) */
 }xsens_orientation_euler_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t i; /**< XXX */
-	float_t h; /**< XXX */
-	float_t g; /**< XXX */
-	float_t f; /**< XXX */
-	float_t e; /**< XXX */
-	float_t d; /**< XXX */
-	float_t c; /**< XXX */
-	float_t b; /**< XXX */
-	float_t a; /**< XXX */
+	float_t i; /**< Rotation matrix (DCM) */
+	float_t h; /**< Rotation matrix (DCM) */
+	float_t g; /**< Rotation matrix (DCM) */
+	float_t f; /**< Rotation matrix (DCM) */
+	float_t e; /**< Rotation matrix (DCM) */
+	float_t d; /**< Rotation matrix (DCM) */
+	float_t c; /**< Rotation matrix (DCM) */
+	float_t b; /**< Rotation matrix (DCM) */
+	float_t a; /**< Rotation matrix (DCM) */
 }xsens_orientation_matrix_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
@@ -126,34 +126,34 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 }xsens_auxiliary_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t alt; /**< XXX */
-	float_t lon; /**< XXX */
-	float_t lat; /**< XXX */
+	float_t alt; /**< Height above earth [m] */
+	float_t lon; /**< Longitude according to WGS 84 [deg] */
+	float_t lat; /**< Latitude according to WGS 84 [deg] */
 }xsens_position_data_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	float_t velz; /**< XXX */
-	float_t vely; /**< XXX */
-	float_t velx; /**< XXX */
+	float_t velz; /**< Velocity Up/Down (depends on setting) [m/s] */
+	float_t vely; /**< Velocity West/East (depends on setting) [m/s] */
+	float_t velx; /**< Velocity North (depends on setting) [m/s] */
 }xsens_velocity_data_t;
 
 typedef struct {
-	uint8_t status; /**< XXX */
+	uint8_t status; /**< Bit0:Self Test ; Bit1:XKF Valid ; Bit2:GPS Fix ; Bit3/4:No Rotation Status ; Bit5-7:reserved */
 }xsens_status_t;
 
 typedef struct {
-	uint16_t sample_counter; /**< XXX */
+	uint16_t sample_counter; /** wraps around after 65536 */
 }xsens_sample_counter_t;
 
 typedef struct { // reverse order because of swapping the bytes (little/big endian)
-	uint8_t status; /**< 0x01 = Valid Time of Week; 0x02 = Valid Week Number; 0x04 = Valid UTC (Leap Seconds already known?) */
-	uint8_t seconds; /**< Seconds of minute, range 0 .. 59 */
-	uint8_t minute; /**< Minute of hour, range 0 .. 59 */
-	uint8_t hour; /**< Hour of day, range 0 .. 23 */
-	uint8_t day; /**< Day of month, range 1 .. 31 */
-	uint8_t month; /**< Month, range 1 .. 12 */
-	uint16_t year; /**< Year, range 1999 .. 2099 */
-	uint32_t nsec; /**< Nanoseconds of second, range 0 .. 1.000.000.000 */
+	uint8_t status;		/**< 0x01 = Valid Time of Week; 0x02 = Valid Week Number; 0x04 = Valid UTC (Leap Seconds already known?) */
+	uint8_t seconds;	/**< Seconds of minute, range 0 .. 59 */
+	uint8_t minute;		/**< Minute of hour, range 0 .. 59 */
+	uint8_t hour;		/**< Hour of day, range 0 .. 23 */
+	uint8_t day;		/**< Day of month, range 1 .. 31 */
+	uint8_t month;		/**< Month, range 1 .. 12 */
+	uint16_t year;		/**< Year, range 1999 .. 2099 */
+	uint32_t nsec;		/**< Nanoseconds of second, range 0 .. 1.000.000.000 */
 }xsens_utc_time_t;
 
 #pragma pack(pop)
@@ -163,7 +163,8 @@ typedef struct { // reverse order because of swapping the bytes (little/big endi
 class XSENS_PARSER : public XSENS_Helper
 {
 public:
-	XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s  *xsens_sensor_combined);
+	XSENS_PARSER(const int &fd, struct xsens_vehicle_gps_position_s *gps_position, struct xsens_sensor_combined_s  *xsens_sensor_combined,
+			struct xsens_vehicle_attitude_s * _xsens_vehicle_attitude, struct xsens_vehicle_global_position_s * _global_position);
 	~XSENS_PARSER();
 	int				receive(unsigned timeout);
 	int				configure(unsigned &baudrate);
@@ -193,6 +194,8 @@ private:
 	int					_fd;
 	struct xsens_vehicle_gps_position_s *_gps_position;
 	struct xsens_sensor_combined_s *_xsens_sensor_combined;
+	struct xsens_vehicle_attitude_s * _xsens_vehicle_attitude;
+	struct xsens_vehicle_global_position_s * _global_position;
 	xsens_decode_state_t	_decode_state;
 	uint8_t				_xsens_revision;
 	uint8_t				_rx_header_lgth;

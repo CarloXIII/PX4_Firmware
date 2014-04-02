@@ -44,7 +44,12 @@
 #include "drv_sensor.h"
 #include "drv_orb_dev.h"
 
-#define XSENS_DEFAULT_UART_PORT "/dev/ttyS2"
+#define XSENS_DEFAULT_UART_PORT "/dev/ttyS3" // UART 6
+/* ATTENTION it's the same UART like the default GPS.
+ * If you start the PX4 Board without a Startup Skript
+ * you need to stop the gps module bevor starting the XSENS
+ * module.
+ */
 
 #define XSENS_DEVICE_PATH	"/dev/xsens"
 

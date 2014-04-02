@@ -61,7 +61,10 @@
 #include <systemlib/err.h>
 #include <drivers/drv_xsens.h>
 #include <uORB/uORB.h>
+#include <uORB/topics/xsens_sensor_combined.h>
 #include <uORB/topics/xsens_vehicle_gps_position.h>
+#include <uORB/topics/xsens_vehicle_attitude.h>
+#include <uORB/topics/xsens_vehicle_global_position.h>
 
 #include "xsens_parser.h"
 #include <drivers/drv_rpm.h>
@@ -108,10 +111,14 @@ private:
 	bool 				_baudrate_changed;				///< flag to signal that the baudrate with the XSENS has changed
 	bool				_mode_changed;					///< flag that the XSENS mode has changed
 	XSENS_Helper		*_Helper;						///< instance of XSENS parser
-	struct xsens_vehicle_gps_position_s 	_report;	///< uORB topic for xsens gps position
-	struct xsens_sensor_combined_s			_report_sensor_combined;	///< uORB topic for xsens sensor combined
-	orb_advert_t		_report_pub;					///< uORB pub for gps position
-	orb_advert_t		_report_pub_sensor_combined;		///< uORB pub for gps position
+	struct xsens_vehicle_gps_position_s _report;///< uORB topic for xsens gps position
+	struct xsens_sensor_combined_s _report_sensor_combined;	///< uORB topic for xsens sensor combined
+	struct xsens_vehicle_attitude_s _report_vehicle_attitude;//<uORB topic for xsens vehicle attitude
+	struct xsens_vehicle_global_position_s _report_global_position; //<uORB topic for xsens global position
+	orb_advert_t _report_pub;					///< uORB pub for gps position
+	orb_advert_t _report_pub_sensor_combined;///< uORB pub for sensor combined
+	orb_advert_t _report_pub_vehicle_attitude;//< uORB pub for vehicle attitude
+	orb_advert_t _report_pub_global_position;//< uORB pub for global position
 	float				_rate;							///< position update rate
 
 
@@ -165,6 +172,8 @@ XSENS::XSENS(const char* uart_path) :
 	_Helper(nullptr),
 	_report_pub(-1),
 	_report_pub_sensor_combined(-1),
+	_report_pub_vehicle_attitude(-1),
+	_report_pub_global_position(-1),
 	_rate(0.0f)
 {
 	/* store port name */
@@ -176,6 +185,8 @@ XSENS::XSENS(const char* uart_path) :
 	g_dev = this;
 	memset(&_report, 0, sizeof(_report));
 	memset(&_report_sensor_combined, 0, sizeof(_report_sensor_combined));
+	memset(&_report_vehicle_attitude, 0, sizeof(_report_vehicle_attitude));
+	memset(&_report_global_position, 0, sizeof(_report_global_position));
 
 	_debug_enabled = true;
 }
@@ -272,7 +283,8 @@ XSENS::task_main()
 		}
 
 
-		_Helper = new XSENS_PARSER(_serial_fd, &_report, &_report_sensor_combined);
+		_Helper = new XSENS_PARSER(_serial_fd, &_report, &_report_sensor_combined, &_report_vehicle_attitude,
+				&_report_global_position);
 
 		//warnx("xsens: task main started");
 
@@ -301,6 +313,26 @@ XSENS::task_main()
 					orb_publish(ORB_ID(xsens_sensor_combined), _report_pub_sensor_combined, &_report_sensor_combined);
 				} else {
 					_report_pub_sensor_combined = orb_advertise(ORB_ID(xsens_sensor_combined), &_report_sensor_combined);
+				}
+
+				if (_report_pub_vehicle_attitude > 0) {
+					orb_publish(ORB_ID(xsens_vehicle_attitude),
+							_report_pub_vehicle_attitude,
+							&_report_vehicle_attitude);
+				} else {
+					_report_pub_vehicle_attitude = orb_advertise(
+							ORB_ID(xsens_vehicle_attitude),
+							&_report_vehicle_attitude);
+				}
+
+				if (_report_pub_global_position > 0) {
+					orb_publish(ORB_ID(xsens_vehicle_global_position),
+							_report_pub_global_position,
+							&_report_global_position);
+				} else {
+					_report_pub_global_position = orb_advertise(
+							ORB_ID(xsens_vehicle_global_position),
+							&_report_global_position);
 				}
 
 				last_rate_count++;
@@ -378,6 +410,7 @@ XSENS::print_status()
 	printf("\nSensor packet:");
 	printf("\naltitude barometer: %.3f", _report_sensor_combined.baro_alt_meter);
 	printf("\npressure barometer: %.3f", _report_sensor_combined.baro_pres_mbar);
+	printf("\ntemp barometer: %.3f", _report_sensor_combined.baro_temp_celcius);
 
 	printf("\ngyro x [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[0]);
 	printf("\ngyro y [rad/s]: %.3f", _report_sensor_combined.gyro_rad_s[1]);
@@ -390,7 +423,21 @@ XSENS::print_status()
 	printf("\nmag x [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[0]);
 	printf("\nmag y [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[1]);
 	printf("\nmag z [normalized to total field]: %.3f", _report_sensor_combined.magnetometer_ga[2]);
-	printf("\n*****************************************************");
+
+	printf("\nVehicle Attitude packet: ");
+	printf("\nroll: %.3f", _report_vehicle_attitude.roll);
+	printf("\npitch: %.3f", _report_vehicle_attitude.pitch);
+	printf("\nyaw: %.3f", _report_vehicle_attitude.yaw);
+
+	printf("\nGlobal Position packet: ");
+	printf("\nlatitude: %.3f", _report_global_position.lat);
+	printf("\nlongitude: %.3f", _report_global_position.lon);
+	printf("\naltitude: %.3f", _report_global_position.alt);
+	printf("\nvelocity x: %.3f", _report_global_position.vx);
+	printf("\nvelocity y: %.3f", _report_global_position.vy);
+	printf("\nvelocity z: %.3f", _report_global_position.vz);
+
+	printf("\n*****************************************************\n");
 
 	//xsens::_
 	//errx(0, "PASS");

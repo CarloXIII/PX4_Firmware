@@ -75,6 +75,9 @@ ORB_DEFINE(input_rc, struct rc_input_values);
 #include "topics/vehicle_attitude.h"
 ORB_DEFINE(vehicle_attitude, struct vehicle_attitude_s);
 
+#include "topics/xsens_vehicle_attitude.h"
+ORB_DEFINE(xsens_vehicle_attitude, struct xsens_vehicle_attitude_s);
+
 #include "topics/sensor_combined.h"
 ORB_DEFINE(sensor_combined, struct sensor_combined_s);
 
@@ -105,8 +108,14 @@ ORB_DEFINE(servorail_status, struct servorail_status_s);
 #include "topics/vehicle_global_position.h"
 ORB_DEFINE(vehicle_global_position, struct vehicle_global_position_s);
 
+#include "topics/xsens_vehicle_global_position.h"
+ORB_DEFINE(xsens_vehicle_global_position, struct xsens_vehicle_global_position_s);
+
 #include "topics/vehicle_local_position.h"
 ORB_DEFINE(vehicle_local_position, struct vehicle_local_position_s);
+
+#include "topics/vehicle_paraglider_angle.h"
+ORB_DEFINE(vehicle_paraglider_angle, struct vehicle_paraglider_angle_s);
 
 #include "topics/vehicle_vicon_position.h"
 ORB_DEFINE(vehicle_vicon_position, struct vehicle_vicon_position_s);

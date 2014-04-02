@@ -38,6 +38,7 @@ MODULES		+= drivers/meas_airspeed
 MODULES		+= drivers/frsky_telemetry
 MODULES		+= modules/sensors
 MODULES     += drivers/xsens
+MODULES		+= drivers/max127
 MODULES		+= drivers/current_sensor
 MODULES		+= drivers/rpm_arduino
 
@@ -68,7 +69,7 @@ MODULES		+= modules/commander
 MODULES		+= modules/navigator
 MODULES		+= modules/mavlink
 MODULES		+= modules/gpio_led
-MODULES		+= modules/governor_control
+#MODULES		+= modules/governor_control
 
 #
 # Estimation modules (EKF/ SO3 / other filters)

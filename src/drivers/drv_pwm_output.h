@@ -66,8 +66,9 @@ __BEGIN_DECLS
 
 /**
  * Lowest minimum PWM in us
+ * Lukas Koepfli: Changed it because there are RC-Receiver who has a lower PWM than 900 us
  */
-#define PWM_LOWEST_MIN 900
+#define PWM_LOWEST_MIN 800
 
 /**
  * Default minimum PWM in us
@@ -81,8 +82,9 @@ __BEGIN_DECLS
 
 /**
  * Highest maximum PWM in us
+ * Lukas Koepfli: Changed it because there are RC-Receiver who has a higher PWM than 2100 us
  */
-#define PWM_HIGHEST_MAX 2100
+#define PWM_HIGHEST_MAX 2200
 
 /**
  * Default maximum PWM in us

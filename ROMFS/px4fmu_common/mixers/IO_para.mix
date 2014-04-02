@@ -1,0 +1,73 @@
+Paraglider mixer for PX4IO
+===========================
+
+This file defines mixers suitable for controlling a paraglider aircraft using
+PX4IO. The configuration assumes the back wheel servo is connected to PX4IO
+servo output 0 and the breakline servos to output 1 and 2. The motor speed control
+for motor left and motor right is connected to the output 3 and 4. All other outputs
+are not used.
+
+Inputs to the mixer come from channel group 0 (Flight Control), channels 0
+(roll), 1 (pitch), 2 (yaw) and 3 (throttle).
+
+See the README for more information on the scaler format.
+
+Back wheel mixer Output 0
+-------------
+Two scalers total (output, yaw).
+
+The scaling factor for yaw inputs is adjusted to implement differential travel
+for the back wheel.
+
+M: 1
+O:      10000  10000      0 -10000  10000
+S: 0 2  -3000  -3000      0 -10000  10000
+
+Brakeline mixers Output 1 and 2
+-------------
+Three scalers total (output, roll, pitch).
+
+On the assumption that the two breakline servos are physically reversed, the pitch
+input is inverted between the two servos.
+
+The scaling factor for roll inputs is adjusted to implement differential travel
+for the servos.
+
+M: 2
+O:      10000  10000     56 -10000  10000
+S: 0 0   5200   4200      0 -10000  10000
+S: 0 1   5200   4200      0 -10000  10000
+
+M: 2
+O:      10000  10000   -154 -10000  10000
+S: 0 0   4200   5200      0 -10000  10000
+S: 0 1  -5200  -4200      0 -10000  10000
+
+Motor speed mixers Output 3 and 4
+-----------------
+Three scalers total (output, yaw, throttle).
+
+The scaling factor for yaw inputs is 0.15 and is inverted between the two motors.
+
+This mixer generates a range output (-1 to 1) from an throttle input in the (-1 to 1)
+range.
+
+M: 2
+O:      10000  10000      0 -10000  10000
+S: 0 2   1500   1500      0 -10000  10000
+S: 0 3      0  20000 -10000 -10000  10000
+
+M: 2
+O:      10000  10000      0 -10000  10000
+S: 0 2  -1500  -1500      0 -10000  10000
+S: 0 3      0  20000 -10000 -10000  10000
+
+Output 5-7
+--------
+This mixers are empty.
+
+Z:
+
+Z:
+
+Z:
