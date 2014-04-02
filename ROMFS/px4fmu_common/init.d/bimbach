@@ -1,0 +1,133 @@
+#!nsh
+
+echo "[init] 30_io_camflyer: PX4FMU+PX4IO on Camflyer"
+
+set MODE bimbach
+
+# Start terminal
+if sercon
+then
+	echo "USB connected"
+fi
+
+
+#
+# Start the ORB (first app to start)
+#
+uorb start
+
+# Try to get an USB console
+nshterm /dev/ttyACM0 &
+
+
+#
+	# Upgrade PX4IO firmware
+	#
+	if px4io detect
+	then
+		echo "PX4IO running, not upgrading"
+	else
+		echo "Attempting to upgrade PX4IO"
+		if px4io update
+		then
+			if [ -d /fs/microsd ]
+			then
+				echo "Flashed PX4IO Firmware OK" > /fs/microsd/px4io.log
+			fi
+
+			# Allow IO to safely kick back to app
+			usleep 200000
+		else
+			echo "No PX4IO to upgrade here"
+		fi
+	fi
+
+
+
+#
+# Load microSD params
+#
+echo "[init] loading microSD params"
+param select /fs/microsd/parameters
+if [ -f /fs/microsd/parameters ]
+then
+	param load /fs/microsd/parameters
+fi
+
+ 
+#
+# Force some key parameters to sane values
+# MAV_TYPE     1 = fixed wing, 2 = quadrotor, 4 = helicopter with tail rotor, 13 = hexarotor
+#              see https://pixhawk.ethz.ch/mavlink/
+#
+param set MAV_TYPE 4
+ 
+
+ 
+
+# Start MAVLink (depends on orb)
+#
+#mavlink start -d /dev/ttyACM0 -b 57600
+mavlink start -d /dev/ttyS0 -b 57600
+usleep 5000
+ 
+#
+# Start the commander (depends on orb, mavlink)
+#
+commander start
+ 
+#
+# Start PX4IO interface (depends on orb, commander)
+#
+px4io start
+ 
+#
+# Allow PX4IO to recover from midair restarts.
+# this is very unlikely, but quite safe and robust.
+px4io recovery
+
+#
+# Set actuator limit to 50 Hz update (25 Hz PWM)
+px4io limit 50
+ 
+#
+# Start the sensors (depends on orb, px4io)
+#
+sh /etc/init.d/rc.sensors
+
+
+
+
+# Start system state indicator
+if rgbled start
+then
+	echo "Using external RGB Led"
+else
+	if blinkm start
+	then
+		blinkm systemstate
+	fi
+fi
+
+
+#
+# Start Xsens interface
+#
+xsens start
+ 
+#
+# Start the attitude estimator (depends on orb)
+#
+att_pos_estimator_ekf start
+ 
+#
+# Load mixer and start controllers (depends on px4io)
+#
+#mixer load /dev/pwm_output /etc/mixers/FMU_Q.mix
+mixer load /dev/pwm_output /etc/mixers/IO_pass.mix
+fixedwing_backside start
+ 
+#
+# Start logging
+#
+sdlog2 start -r 100 -a -b 16
