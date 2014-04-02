@@ -546,7 +546,62 @@ legend('RC-Input Motor links', 'RC-Input Motor rechts'); grid on; title('RC-Rohd
 xlabel('Zeitvektor [s]'); ylabel('RC Input [-1...1]');
 axis([-Inf Inf -1 1])
 
+%% PLOT - Motoransteuerung - Relativer Winkel
 
+figure(1)
+subplot(2,1,1);
+plot(Time,[OUT0_Out3, OUT0_Out4]);
+legend('Output Motor links', 'Output Motor rechts'); grid on; title('PWM Ausgang');
+xlabel('Zeitvektor [s]'); ylabel('PWM Ausgang');
+axis([-Inf Inf -Inf Inf])
+subplot(2,1,2);
+twist_ang = RANG_Ang_r - RANG_Ang_l;
+plot(Time,twist_ang);
+legend('Relativer Winkel Paraglider-Last'); grid on; title('Winkel zwischen Schirm und Last');
+xlabel('Zeitvektor [s]'); ylabel('rad [s]');
+axis([-Inf Inf -Inf Inf])
+
+%% PLOT - Motoren Ausgang - Relativer Winkel Schirm
+
+figure(1)
+subplot(2,1,1);
+plot(Time,[OUT0_Out3, OUT0_Out4]);
+legend('Output Motor links', 'Output Motor rechts'); grid on; title('PWM Ausgang');
+xlabel('Zeitvektor [s]'); ylabel('PWM Ausgang');
+axis([1510 1690 -Inf Inf])
+subplot(2,1,2);
+twist_ang = RANG_Ang_r - RANG_Ang_l;
+plot(Time,twist_ang);
+legend('Relativer Winkel Paraglider-Last'); grid on; title('Winkel zwischen Schirm und Last');
+xlabel('Zeitvektor [s]'); ylabel('rad [s]');
+axis([1510 1690 -Inf Inf])
+
+%% PLOT - Aktuator SetPoint - Relativer Winkel Schirm
+
+twist_ang = RANG_Ang_r - RANG_Ang_l;
+figure(1)
+[haxes,hline1,hline2] = plotyy(Time,ATTC_Yaw, Time, twist_ang);
+ylabel(haxes(1),'Aktuator SetPoint Gier');
+ylabel(haxes(2),'Relativer Winkel Schirm-Last [rad]');
+xlabel(haxes(2),'Zeit [s]');
+title('Zusammenhang SetPoint Gier und relativer Winkel');
+legend('Aktuator SetPoint Yaw', 'Relativer Winkel');
+grid on;
+
+%% PLOT - Aufschauckelnder Regler
+
+figure(1)
+subplot(2,1,1);
+plot(Time,[OUT0_Out3, OUT0_Out4]);
+legend('Output Motor links', 'Output Motor rechts'); grid on; title('PWM Ausgang');
+xlabel('Zeitvektor [s]'); ylabel('PWM Ausgang');
+axis([835 860 1390 1450])
+subplot(2,1,2);
+twist_ang = RANG_Ang_r - RANG_Ang_l;
+plot(Time,twist_ang);
+legend('Relativer Winkel Paraglider-Last'); grid on; title('Winkel zwischen Schirm und Last');
+xlabel('Zeitvektor [s]'); ylabel('rad [s]');
+axis([835 860 -Inf Inf])
 
 %% PLOT - Motoren / Servos
 figure(1);
