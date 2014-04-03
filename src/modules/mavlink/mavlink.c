@@ -319,9 +319,10 @@ int set_mavlink_interval_limit(struct mavlink_subscriptions *subs, int mavlink_m
 		orb_set_interval(subs->man_control_sp_sub, min_interval);
 		break;
 
-	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
-		orb_set_interval(subs->debug_key_value, min_interval);
-		break;
+		// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
+//	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
+//		orb_set_interval(subs->debug_key_value, min_interval);
+//		break;
 
 	default:
 		/* not found */

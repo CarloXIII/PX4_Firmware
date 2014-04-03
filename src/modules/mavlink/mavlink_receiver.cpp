@@ -133,6 +133,9 @@ static int32_t lat0 = 0;
 static int32_t lon0 = 0;
 static double alt0 = 0;
 
+// variables to select the parameters which are sent to the GCS
+sel_par_QGC_t qgc_selected_params = {1,1,0,0,0,0};
+
 static void
 handle_message(mavlink_message_t *msg)
 {
@@ -143,6 +146,8 @@ handle_message(mavlink_message_t *msg)
 
 		if (cmd_mavlink.target_system == mavlink_system.sysid && ((cmd_mavlink.target_component == mavlink_system.compid)
 				|| (cmd_mavlink.target_component == MAV_COMP_ID_ALL))) {
+
+
 			//check for MAVLINK terminate command
 			if (cmd_mavlink.command == MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN && ((int)cmd_mavlink.param1) == 3) {
 				/* This is the link shutdown command, terminate mavlink */
@@ -180,8 +185,77 @@ handle_message(mavlink_message_t *msg)
 					orb_publish(ORB_ID(vehicle_command), cmd_pub, &vcmd);
 				}
 			}
+
 		}
+
+
+	/*
+				 * User defined
+				 */
+				if(cmd_mavlink.command == 0){
+					switch(cmd_mavlink.target_component){
+					case 1:
+							qgc_selected_params.TWIST_ANGLE_SEL = ~qgc_selected_params.TWIST_ANGLE_SEL;
+							if(qgc_selected_params.TWIST_ANGLE_SEL == 1){
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"Twist-Angle START");
+							}else{
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"Twist-Angle STOP");
+							}
+
+						break;
+
+					case 2:
+							qgc_selected_params.XSENS_SENS_RAW_SEL = ~qgc_selected_params.XSENS_SENS_RAW_SEL ;
+							if(qgc_selected_params.XSENS_SENS_RAW_SEL == 1){
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Raw START");
+							}else{
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Raw STOP");
+							}
+						break;
+
+					case 3:
+							qgc_selected_params.XSENS_SENS_COMB_SEL = ~qgc_selected_params.XSENS_SENS_COMB_SEL ;
+							if(qgc_selected_params.XSENS_SENS_COMB_SEL == 1){
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Comb START");
+							}else{
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Comb STOP");
+							}
+						break;
+
+					case 4:
+							qgc_selected_params.XSENS_ATTITUDE_SEL = ~qgc_selected_params.XSENS_ATTITUDE_SEL ;
+							if(qgc_selected_params.XSENS_ATTITUDE_SEL == 1){
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Attitude START");
+							}else{
+								mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Attitude STOP");
+							}
+						break;
+
+					case 5:
+						qgc_selected_params.XSENS_GLOB_POS = ~qgc_selected_params.XSENS_GLOB_POS ;
+						if(qgc_selected_params.XSENS_GLOB_POS == 1){
+							mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Glob-Pos START");
+						}else{
+							mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-Glob-Pos STOP");
+						}
+					break;
+
+					case 6:
+						qgc_selected_params.XSENS_GPS_POS_SEL = ~qgc_selected_params.XSENS_GPS_POS_SEL ;
+						if(qgc_selected_params.XSENS_GPS_POS_SEL == 1){
+							mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-GPS-Pos START");
+						}else{
+							mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-GPS-Pos STOP");
+						}
+					break;
+					default:
+						mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"Wrong Component-ID");
+					}
+				}
+
+
 	}
+
 
 	if (msg->msgid == MAVLINK_MSG_ID_OPTICAL_FLOW) {
 		mavlink_optical_flow_t flow;
@@ -208,11 +282,14 @@ handle_message(mavlink_message_t *msg)
 		}
 	}
 
+
+
 	if (msg->msgid == MAVLINK_MSG_ID_SET_MODE) {
 		/* Set mode on request */
 		mavlink_set_mode_t new_mode;
 		mavlink_msg_set_mode_decode(msg, &new_mode);
 
+		printf("Entering SetMode Part");
 		union px4_custom_mode custom_mode;
 		custom_mode.data = new_mode.custom_mode;
 		/* Copy the content of mavlink_command_long_t cmd_mavlink into command_t cmd */
@@ -233,11 +310,14 @@ handle_message(mavlink_message_t *msg)
 		/* check if topic is advertised */
 		if (cmd_pub <= 0) {
 			cmd_pub = orb_advertise(ORB_ID(vehicle_command), &vcmd);
-
+			mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"cmd advert");// carlo debug
 		} else {
+			mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"cmd publish");
 			/* create command */
 			orb_publish(ORB_ID(vehicle_command), cmd_pub, &vcmd);
 		}
+
+
 	}
 
 	/* Handle Vicon position estimates */

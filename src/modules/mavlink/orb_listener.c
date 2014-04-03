@@ -77,6 +77,12 @@ struct actuator_armed_s armed;
 struct actuator_controls_s actuators_0;
 struct vehicle_attitude_s att;
 struct airspeed_s airspeed;
+// User defined message structs
+struct vehicle_paraglider_angle_s veh_para_angle;
+struct xsens_sensor_combined_s xsens_sens_combined;
+struct xsens_vehicle_attitude_s xsens_veh_attitude;
+struct xsens_vehicle_global_position_s xsens_veh_global_position;
+//struct xsens_vehicle_gps_position_s xsens_veh_gps_positon;
 
 struct mavlink_subscriptions mavlink_subs;
 
@@ -110,7 +116,7 @@ static void	l_sensor_combined(const struct listener *l);
 static void	l_vehicle_attitude(const struct listener *l);
 static void	l_vehicle_gps_position(const struct listener *l);
 static void	l_vehicle_status(const struct listener *l);
-static void	l_rc_channels(const struct listener *l);
+//static void	l_rc_channels(const struct listener *l);// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
 static void	l_input_rc(const struct listener *l);
 static void	l_global_position(const struct listener *l);
 static void	l_local_position(const struct listener *l);
@@ -121,19 +127,24 @@ static void	l_actuator_outputs(const struct listener *l);
 static void	l_actuator_armed(const struct listener *l);
 static void	l_manual_control_setpoint(const struct listener *l);
 static void	l_vehicle_attitude_controls(const struct listener *l);
-static void	l_debug_key_value(const struct listener *l);
+//static void	l_debug_key_value(const struct listener *l);// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
 static void	l_optical_flow(const struct listener *l);
 static void	l_vehicle_rates_setpoint(const struct listener *l);
 static void	l_home(const struct listener *l);
 static void	l_airspeed(const struct listener *l);
 static void	l_nav_cap(const struct listener *l);
+static void l_paraglider_angle(const struct listener *l);
+static void l_xsens_sensor_combined(const struct listener *l);
+static void l_xsens_attitude(const struct listener *l);
+//static void l_xsens_global_position(const struct listener *l);
+////static void l_xsens_gps_position(const struct listener *l);
 
 static const struct listener listeners[] = {
 	{l_sensor_combined,		&mavlink_subs.sensor_sub,	0},
 	{l_vehicle_attitude,		&mavlink_subs.att_sub,		0},
 	{l_vehicle_gps_position,	&mavlink_subs.gps_sub,		0},
 	{l_vehicle_status,		&status_sub,			0},
-	{l_rc_channels,			&rc_sub,			0},
+	//{l_rc_channels,			&rc_sub,			0},// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
 	{l_input_rc,			&mavlink_subs.input_rc_sub,	0},
 	{l_global_position,		&mavlink_subs.global_pos_sub,	0},
 	{l_local_position,		&mavlink_subs.local_pos_sub,	0},
@@ -147,15 +158,22 @@ static const struct listener listeners[] = {
 	{l_actuator_armed,		&mavlink_subs.armed_sub,	0},
 	{l_manual_control_setpoint,	&mavlink_subs.man_control_sp_sub, 0},
 	{l_vehicle_attitude_controls,	&mavlink_subs.actuators_sub,	0},
-	{l_debug_key_value,		&mavlink_subs.debug_key_value,	0},
+	//{l_debug_key_value,		&mavlink_subs.debug_key_value,	0},// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
 	{l_optical_flow,		&mavlink_subs.optical_flow,	0},
 	{l_vehicle_rates_setpoint,	&mavlink_subs.rates_setpoint_sub,	0},
 	{l_home,			&mavlink_subs.home_sub,		0},
 	{l_airspeed,			&mavlink_subs.airspeed_sub,		0},
 	{l_nav_cap,			&mavlink_subs.navigation_capabilities_sub,		0},
+	{l_paraglider_angle,	&mavlink_subs.vehicle_paraglider_angle_sub,	0},
+	{l_xsens_sensor_combined,	&mavlink_subs.xsens_sensor_combined_sub, 0},
+	{l_xsens_attitude,		&mavlink_subs.xsens_attitude_sub, 0},
+//	{l_xsens_global_position,	&mavlink_subs.xsens_global_position_sub, 0},
+		//{l_xsens_gps_position,	&mavlink_subs.xsens_gps_position_sub, 0},
 };
 
+
 static const unsigned n_listeners = sizeof(listeners) / sizeof(listeners[0]);
+
 
 uint16_t
 cm_uint16_from_m_float(float m)
@@ -336,13 +354,14 @@ l_vehicle_status(const struct listener *l)
 				   mavlink_state);
 }
 
-void
-l_rc_channels(const struct listener *l)
-{
-	/* copy rc channels into local buffer */
-	orb_copy(ORB_ID(rc_channels), rc_sub, &rc);
-	// XXX Add RC channels scaled message here
-}
+// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
+//void
+//l_rc_channels(const struct listener *l)
+//{
+//	/* copy rc channels into local buffer */
+//	orb_copy(ORB_ID(rc_channels), rc_sub, &rc);
+//	// XXX Add RC channels scaled message here
+//}
 
 void
 l_input_rc(const struct listener *l)
@@ -606,42 +625,43 @@ l_vehicle_attitude_controls(const struct listener *l)
 {
 	orb_copy(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, mavlink_subs.actuators_sub, &actuators_0);
 
-	if (gcs_link) {
-		/* send, add spaces so that string buffer is at least 10 chars long */
-		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-						   last_sensor_timestamp / 1000,
-						   "ctrl0    ",
-						   actuators_0.control[0]);
-		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-						   last_sensor_timestamp / 1000,
-						   "ctrl1    ",
-						   actuators_0.control[1]);
-		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-						   last_sensor_timestamp / 1000,
-						   "ctrl2     ",
-						   actuators_0.control[2]);
-		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-						   last_sensor_timestamp / 1000,
-						   "ctrl3     ",
-						   actuators_0.control[3]);
-	}
+//	if (gcs_link) {
+//		/* send, add spaces so that string buffer is at least 10 chars long */
+//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+//						   last_sensor_timestamp / 1000,
+//						   "ctrl0    ",
+//						   actuators_0.control[0]);
+//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+//						   last_sensor_timestamp / 1000,
+//						   "ctrl1    ",
+//						   actuators_0.control[1]);
+//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+//						   last_sensor_timestamp / 1000,
+//						   "ctrl2     ",
+//						   actuators_0.control[2]);
+//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+//						   last_sensor_timestamp / 1000,
+//						   "ctrl3     ",
+//						   actuators_0.control[3]);
+//	}
 }
 
-void
-l_debug_key_value(const struct listener *l)
-{
-	struct debug_key_value_s debug;
-
-	orb_copy(ORB_ID(debug_key_value), mavlink_subs.debug_key_value, &debug);
-
-	/* Enforce null termination */
-	debug.key[sizeof(debug.key) - 1] = '\0';
-
-	mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-					   last_sensor_timestamp / 1000,
-					   debug.key,
-					   debug.value);
-}
+// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
+//void
+//l_debug_key_value(const struct listener *l)
+//{
+//	struct debug_key_value_s debug;
+//
+//	orb_copy(ORB_ID(debug_key_value), mavlink_subs.debug_key_value, &debug);
+//
+//	/* Enforce null termination */
+//	debug.key[sizeof(debug.key) - 1] = '\0';
+//
+//	mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+//					   last_sensor_timestamp / 1000,
+//					   debug.key,
+//					   debug.value);
+//}
 
 void
 l_optical_flow(const struct listener *l)
@@ -680,6 +700,137 @@ l_nav_cap(const struct listener *l)
 				   nav_cap.turn_distance);
 
 }
+
+/*
+ * Callback method to send the Twistangle date to the GCS
+ */
+ void
+ l_paraglider_angle(const struct listener *l)
+ {
+	 orb_copy(ORB_ID(vehicle_paraglider_angle),mavlink_subs.vehicle_paraglider_angle_sub, &veh_para_angle);
+	 if(qgc_selected_params.TWIST_ANGLE_SEL == 1){
+		 mavlink_msg_twist_angle_send(MAVLINK_COMM_0,
+			 veh_para_angle.si_units[0],
+			 veh_para_angle.si_units[1],
+			 (veh_para_angle.si_units[1]) - (veh_para_angle.si_units[0]));
+	}
+}
+
+ /*
+   * Callback method to send the gyro/acc/mag/baro-data as combined and raw values
+   * from the XSENS to the GCS
+   */
+  void
+  l_xsens_sensor_combined(const struct listener *l){
+		  orb_copy(ORB_ID(xsens_sensor_combined),mavlink_subs.xsens_sensor_combined_sub, &xsens_sens_combined);
+		  if(qgc_selected_params.XSENS_SENS_RAW_SEL==1){
+			  mavlink_msg_xsens_sens_raw_send(MAVLINK_COMM_0,
+					xsens_sens_combined.timestamp,
+				 	xsens_sens_combined.gyro_raw[0],
+				 	xsens_sens_combined.gyro_raw[1],
+				 	xsens_sens_combined.gyro_raw[2],
+				 	xsens_sens_combined.accelerometer_raw[0],
+				 	xsens_sens_combined.accelerometer_raw[1],
+				 	xsens_sens_combined.accelerometer_raw[2],
+				 	xsens_sens_combined.magnetometer_raw[0],
+				 	xsens_sens_combined.magnetometer_raw[1],
+				 	xsens_sens_combined.magnetometer_raw[2]);
+		  }
+		  if(qgc_selected_params.XSENS_SENS_COMB_SEL==1){
+			  mavlink_msg_xsens_sens_comb_send(MAVLINK_COMM_0,
+					xsens_sens_combined.timestamp,
+				 	xsens_sens_combined.gyro_rad_s[0],
+				 	xsens_sens_combined.gyro_rad_s[1],
+				 	xsens_sens_combined.gyro_rad_s[2],
+				 	xsens_sens_combined.accelerometer_m_s2[0],
+				 	xsens_sens_combined.accelerometer_m_s2[1],
+				 	xsens_sens_combined.accelerometer_m_s2[2],
+				 	xsens_sens_combined.magnetometer_ga[0],
+				 	xsens_sens_combined.magnetometer_ga[1],
+				 	xsens_sens_combined.magnetometer_ga[2],
+				 	xsens_sens_combined.baro_pres_mbar,
+				 	xsens_sens_combined.baro_alt_meter,
+				 	xsens_sens_combined.baro_temp_celcius,
+				 	xsens_sens_combined.differential_pressure_pa);
+		  }
+
+	  }
+
+ /*
+  * Callback method to send the attitude-data from the XSENS to the GCS
+  */
+  void
+  l_xsens_attitude(const struct listener *l)
+  {
+	orb_copy(ORB_ID(xsens_vehicle_attitude),mavlink_subs.xsens_attitude_sub, &xsens_veh_attitude);
+ 	if(qgc_selected_params.XSENS_ATTITUDE_SEL==1){
+ 	 mavlink_msg_xsens_attitude_send(MAVLINK_COMM_0,
+ 			 xsens_veh_attitude.timestamp,
+ 			 xsens_veh_attitude.roll,
+ 			 xsens_veh_attitude.pitch,
+ 			 xsens_veh_attitude.yaw,
+ 			 xsens_veh_attitude.rollspeed,
+ 			 xsens_veh_attitude.pitchspeed,
+ 			 xsens_veh_attitude.yawspeed,
+ 			 xsens_veh_attitude.rollacc,
+ 			 xsens_veh_attitude.pitchacc,
+ 			 xsens_veh_attitude.yawspeed);
+ 	}
+  }
+//
+//
+//
+//
+//
+//  /*
+//   * Callback method to send the XSENS-global-positon-data to the GCS
+//   */
+//  void
+//  l_xsens_global_position(const struct listener *l)
+//  {
+//	orb_copy(ORB_ID(xsens_vehicle_attitude),mavlink_subs.xsens_global_position_sub, &xsens_veh_global_position);
+// 	if(qgc_selected_params.XSENS_GLOB_POS == 1){
+// 	 mavlink_msg_xsens_glob_pos_send(MAVLINK_COMM_0,
+// 			 xsens_veh_global_position.timestamp,
+// 			 xsens_veh_global_position.lat,
+// 			 xsens_veh_global_position.lon,
+// 			 xsens_veh_global_position.alt,
+// 			 xsens_veh_global_position.relative_alt,
+// 			 xsens_veh_global_position.vx,
+// 			 xsens_veh_global_position.vy,
+// 			 xsens_veh_global_position.vz,
+// 			 xsens_veh_global_position.yaw);
+// 	}
+//  }
+
+  /*
+   * Callback method to send the XSENS-gps-positon-data to the GCS
+   */
+//  void
+//  l_xsens_gps_position(const struct listener *l)
+//  {
+// 	if((qgc_selected_params.XSENS_GPS_POS_SEL != 0)&&(qgc_init_params.XSENS_GPS_POS_INIT==1)){
+// 		warnx("Poll XSENS GPS-Pos");
+// 	 orb_copy(ORB_ID(xsens_vehicle_attitude),mavlink_subs.xsens_gps_position_sub, &xsens_veh_gps_positon);
+// 	 mavlink_msg_xsens_gps_pos_send(MAVLINK_COMM_0,
+// 			 xsens_veh_gps_positon.timestamp_position,
+// 			 xsens_veh_gps_positon.lat,
+// 			 xsens_veh_gps_positon.lon,
+// 			 xsens_veh_gps_positon.alt,
+// 			 xsens_veh_gps_positon.timestamp_variance,
+// 			 xsens_veh_gps_positon.s_variance_m_s,
+// 			 xsens_veh_gps_positon.p_variance_m,
+// 			 xsens_veh_gps_positon.c_variance_rad,
+// 			 xsens_veh_gps_positon.eph_m,
+// 			 xsens_veh_gps_positon.epv_m,
+// 			 xsens_veh_gps_positon.timestamp_velocity,
+// 			 xsens_veh_gps_positon.vel_m_s,
+// 			 xsens_veh_gps_positon.vel_n_m_s,
+// 			 xsens_veh_gps_positon.vel_e_m_s,
+// 			 xsens_veh_gps_positon.vel_d_m_s,
+// 			 xsens_veh_gps_positon.cog_rad);
+// 	   }
+//  }
 
 static void *
 uorb_receive_thread(void *arg)
@@ -761,8 +912,8 @@ uorb_receive_start(void)
 	orb_set_interval(mavlink_subs.position_setpoint_triplet_sub, 0);		/* not polled, don't limit */
 
 	/* --- RC CHANNELS VALUE --- */
-	rc_sub = orb_subscribe(ORB_ID(rc_channels));
-	orb_set_interval(rc_sub, 100);			/* 10Hz updates */
+//	rc_sub = orb_subscribe(ORB_ID(rc_channels));
+//	orb_set_interval(rc_sub, 100);			/* 10Hz updates */
 
 	/* --- RC RAW VALUE --- */
 	mavlink_subs.input_rc_sub = orb_subscribe(ORB_ID(input_rc));
@@ -817,8 +968,8 @@ uorb_receive_start(void)
 	orb_set_interval(mavlink_subs.actuators_sub, 100);	/* 10Hz updates */
 
 	/* --- DEBUG VALUE OUTPUT --- */
-	mavlink_subs.debug_key_value = orb_subscribe(ORB_ID(debug_key_value));
-	orb_set_interval(mavlink_subs.debug_key_value, 100);	/* 10Hz updates */
+//	mavlink_subs.debug_key_value = orb_subscribe(ORB_ID(debug_key_value));
+//	orb_set_interval(mavlink_subs.debug_key_value, 100);	/* 10Hz updates */
 
 	/* --- FLOW SENSOR --- */
 	mavlink_subs.optical_flow = orb_subscribe(ORB_ID(optical_flow));
@@ -832,6 +983,45 @@ uorb_receive_start(void)
 	mavlink_subs.navigation_capabilities_sub = orb_subscribe(ORB_ID(navigation_capabilities));
 	orb_set_interval(mavlink_subs.navigation_capabilities_sub, 500); 	/* 2Hz updates */
 	nav_cap.turn_distance = 0.0f;
+
+	// ------------------------------------------------ ADDED BDA SUBSCRIBTIONS ---------------------------------------------------------------
+	// ----------------------------------------------------------------------------------------------------------------------------------------
+
+		/*
+	     * -- Added subscriptions for the Twist-Angle
+	     */
+			mavlink_subs.vehicle_paraglider_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+			orb_set_interval(mavlink_subs.vehicle_paraglider_angle_sub,100);
+
+	    /*
+	     * -- Added subscriptions for XSENS-Sensor_Combined communication to the GCS
+	    */
+			mavlink_subs.xsens_sensor_combined_sub = orb_subscribe(ORB_ID(xsens_sensor_combined));
+			orb_set_interval(mavlink_subs.xsens_sensor_combined_sub,100);
+
+
+			mavlink_subs.xsens_attitude_sub = orb_subscribe(ORB_ID(xsens_vehicle_attitude));
+			orb_set_interval(mavlink_subs.xsens_attitude_sub,100);
+
+//	    /*
+//	     * -- Added subscriptions for XSENS-Global_Position communication to the GCS
+//	     */
+//			mavlink_subs.xsens_global_position_sub = orb_subscribe(ORB_ID(xsens_vehicle_global_position));
+//			orb_set_interval(mavlink_subs.xsens_global_position_sub,100);
+
+
+	//	if(orb_subscribe(ORB_ID(xsens_vehicle_gps_position)) > -1){
+	//		mavlink_subs.xsens_gps_position_sub = orb_subscribe(ORB_ID(xsens_vehicle_gps_position));
+	//		orb_set_interval(mavlink_subs.xsens_gps_position_sub,100);
+	//		qgc_init_params.XSENS_GPS_POS_INIT= 1;
+	//		warnx("XSENS-GPS-Pos Init");
+	//	}else{
+	//		mavlink_subs.xsens_gps_position_sub = 0;
+	//		qgc_init_params.XSENS_GPS_POS_INIT= 0;
+	//		warnx("XSENS-GPS-Pos NOT Init");
+	//	}
+
+	//--------------------------------------------------------------------------------------------------------------
 
 	/* start the listener loop */
 	pthread_attr_t uorb_attr;

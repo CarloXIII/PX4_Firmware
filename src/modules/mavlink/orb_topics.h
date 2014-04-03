@@ -68,6 +68,11 @@
 #include <uORB/topics/battery_status.h>
 #include <drivers/drv_rc_input.h>
 #include <uORB/topics/navigation_capabilities.h>
+#include <uORB/topics/vehicle_paraglider_angle.h>
+#include <uORB/topics/xsens_sensor_combined.h>
+#include <uORB/topics/xsens_vehicle_attitude.h>
+#include <uORB/topics/xsens_vehicle_global_position.h>
+//#include <uORB/topics/xsens_vehicle_gps_position.h>
 
 struct mavlink_subscriptions {
 	int sensor_sub;
@@ -87,7 +92,7 @@ struct mavlink_subscriptions {
 	int spa_sub;
 	int spl_sub;
 	int triplet_sub;
-	int debug_key_value;
+	//int debug_key_value;// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
 	int input_rc_sub;
 	int optical_flow;
 	int rates_setpoint_sub;
@@ -95,9 +100,15 @@ struct mavlink_subscriptions {
 	int airspeed_sub;
 	int navigation_capabilities_sub;
 	int position_setpoint_triplet_sub;
+	int vehicle_paraglider_angle_sub;
+	int xsens_sensor_combined_sub;
+	int xsens_attitude_sub;
+//	int xsens_global_position_sub;
+		//int xsens_gps_position_sub;
 };
 
 extern struct mavlink_subscriptions mavlink_subs;
+
 
 /** Global position */
 extern struct vehicle_global_position_s global_pos;
@@ -115,10 +126,24 @@ extern struct vehicle_status_s v_status;
 extern struct position_setpoint_triplet_s pos_sp_triplet;
 
 /** RC channels */
-extern struct rc_channels_s rc;
+//extern struct rc_channels_s rc;// todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
 
 /** Actuator armed state */
 extern struct actuator_armed_s armed;
+
+// todo Carlo: Flags for selected Parameter-Transmission to QGroundControl
+typedef struct sel_par_QGC{
+	uint8_t TWIST_ANGLE_SEL : 1;
+	uint8_t XSENS_ATTITUDE_SEL :1;
+	uint8_t XSENS_GLOB_POS :1;
+	uint8_t XSENS_GPS_POS_SEL :1;
+	uint8_t XSENS_SENS_COMB_SEL :1;
+	uint8_t XSENS_SENS_RAW_SEL :1;
+}sel_par_QGC_t;
+
+// todo Carlo: Selected Parameters to send to QGC
+extern sel_par_QGC_t qgc_selected_params;
+
 
 /** Worker thread starter */
 extern pthread_t uorb_receive_start(void);

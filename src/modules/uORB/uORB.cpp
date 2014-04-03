@@ -59,6 +59,7 @@
 #include <drivers/drv_hrt.h>
 
 #include <drivers/drv_orb_dev.h>
+#include <systemlib/err.h>
 
 #include "uORB.h"
 
@@ -935,19 +936,25 @@ orb_advertise(const struct orb_metadata *meta, const void *data)
 
 	/* open the node as an advertiser */
 	fd = node_open(PUBSUB, meta, data, true);
-	if (fd == ERROR)
+	if (fd == ERROR){
+		fprintf(stderr, "[uorb] advertise topic failed\n");
 		return ERROR;
+	}
 
 	/* get the advertiser handle and close the node */
 	result = ioctl(fd, ORBIOCGADVERTISER, (unsigned long)&advertiser);
 	close(fd);
-	if (result == ERROR)
+	if (result == ERROR){
+		fprintf(stderr, "[uorb] advertise handle failed\n");
 		return ERROR;
+	}
 
 	/* the advertiser must perform an initial publish to initialise the object */
 	result= orb_publish(meta, advertiser, data);
-	if (result == ERROR)
+	if (result == ERROR){
+		fprintf(stderr, "[uorb] publish topic failed\n");
 		return ERROR;
+	}
 
 	return advertiser;
 }
