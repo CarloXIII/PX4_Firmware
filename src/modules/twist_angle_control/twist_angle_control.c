@@ -24,15 +24,13 @@
 
 #include "twist_angle_control.h"
 
-#define DT_MIN (0.01f)	// Defines the Frequenz of the controller, should not higher than 400Hz
-#define MAX_ANG_SP (0.5f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
-#define RCPROPO	(0.65f)	// That's the proportion between rc signal input with 152% from radio control and 100% radio control (152%=2155;100%=1936)
-
+#define DT_MIN (0.0025f)	// Defines the Frequenz of the controller, should not higher than 400Hz
+#define MAX_ANG_SP (0.25f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
 // twist angle control parameters
-PARAM_DEFINE_FLOAT(TWISTANG_P, 1.0);
-PARAM_DEFINE_FLOAT(TWISTANG_I, 0.0f);
-PARAM_DEFINE_FLOAT(TWISTANG_D, 0.0f);
-PARAM_DEFINE_FLOAT(TWISTANG_INT_LIM, 0.0f);
+PARAM_DEFINE_FLOAT(TWISTANG_P, 11.8f);
+PARAM_DEFINE_FLOAT(TWISTANG_I, 8.18f);
+PARAM_DEFINE_FLOAT(TWISTANG_D, 4.06f);
+PARAM_DEFINE_FLOAT(TWISTANG_INT_LIM, 10.0f);
 /* Antireset Windup */
 
 struct twist_angle_control_params {
@@ -137,22 +135,21 @@ int twist_angle_control(
 			- (angle_measurement->si_units[0]));
 
 	/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
-	float reference_twist_ang = (manual_sp->yaw / RCPROPO) * MAX_ANG_SP; /* generate a reference_twist_ang. yaw/RCPROPO generate -1..1 setpoint */
+	float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP; /* generate a reference_twist_ang */
 	actuators->control[2] = (pid_calculate(&twist_angle_controller,
-			reference_twist_ang, actual_twist_ang, 0, deltaT) / (MAX_ANG_SP))
-			* (RCPROPO); //use PID-Controller lib pid.h. The RC-Signal from yaw is from -0.65..0.65 because of RC_MIN/MAX config. Generate the same one with RCPROPO
+			reference_twist_ang, actual_twist_ang, 0, deltaT) / (MAX_ANG_SP)); //use PID-Controller lib pid.h
 
 #if (DEBUG)  //just for debugging
-		if (counter % 1000 == 0) {
-			printf(
-					"actuator_output (yaw, CH2) = %.3f, manual_setpoint = %.3f, actual_twist_angel = %.3f\n",
-					actuators->control[2], reference_twist_ang,
-					actual_twist_ang);
-			printf(
-					"actuator_output CH0 = %.3f, actuator_output CH1 = %.3f, actuator_output CH3 = %.3f\n",
-					actuators->control[0], actuators->control[1],
-					actuators->control[3]);
-		}
+	if (counter % 1000 == 0) {
+		printf(
+				"actuator_output (yaw, CH2) = %.3f, manual_setpoint = %.3f, actual_twist_angel = %.3f\n",
+				actuators->control[2], reference_twist_ang,
+				actual_twist_ang);
+		printf(
+				"actuator_output CH0 = %.3f, actuator_output CH1 = %.3f, actuator_output CH3 = %.3f\n",
+				actuators->control[0], actuators->control[1],
+				actuators->control[3]);
+	}
 
 #endif
 
