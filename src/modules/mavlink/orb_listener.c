@@ -625,25 +625,25 @@ l_vehicle_attitude_controls(const struct listener *l)
 {
 	orb_copy(ORB_ID_VEHICLE_ATTITUDE_CONTROLS, mavlink_subs.actuators_sub, &actuators_0);
 
-//	if (gcs_link) {
-//		/* send, add spaces so that string buffer is at least 10 chars long */
-//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-//						   last_sensor_timestamp / 1000,
-//						   "ctrl0    ",
-//						   actuators_0.control[0]);
-//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-//						   last_sensor_timestamp / 1000,
-//						   "ctrl1    ",
-//						   actuators_0.control[1]);
-//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-//						   last_sensor_timestamp / 1000,
-//						   "ctrl2     ",
-//						   actuators_0.control[2]);
-//		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
-//						   last_sensor_timestamp / 1000,
-//						   "ctrl3     ",
-//						   actuators_0.control[3]);
-//	}
+	if (gcs_link) {
+		/* send, add spaces so that string buffer is at least 10 chars long */
+		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+						   last_sensor_timestamp / 1000,
+						   "ctrl0    ",
+						   actuators_0.control[0]);
+		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+						   last_sensor_timestamp / 1000,
+						   "ctrl1    ",
+						   actuators_0.control[1]);
+		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+						   last_sensor_timestamp / 1000,
+						   "ctrl2     ",
+						   actuators_0.control[2]);
+		mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+						   last_sensor_timestamp / 1000,
+						   "ctrl3     ",
+						   actuators_0.control[3]);
+	}
 }
 
 // todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
@@ -917,7 +917,7 @@ uorb_receive_start(void)
 
 	/* --- RC RAW VALUE --- */
 	mavlink_subs.input_rc_sub = orb_subscribe(ORB_ID(input_rc));
-	orb_set_interval(mavlink_subs.input_rc_sub, 100);
+	orb_set_interval(mavlink_subs.input_rc_sub, 500);
 
 	/* --- GLOBAL POS VALUE --- */
 	mavlink_subs.global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
@@ -997,11 +997,11 @@ uorb_receive_start(void)
 	     * -- Added subscriptions for XSENS-Sensor_Combined communication to the GCS
 	    */
 			mavlink_subs.xsens_sensor_combined_sub = orb_subscribe(ORB_ID(xsens_sensor_combined));
-			orb_set_interval(mavlink_subs.xsens_sensor_combined_sub,100);
+			orb_set_interval(mavlink_subs.xsens_sensor_combined_sub,1000);
 
 
 			mavlink_subs.xsens_attitude_sub = orb_subscribe(ORB_ID(xsens_vehicle_attitude));
-			orb_set_interval(mavlink_subs.xsens_attitude_sub,100);
+			orb_set_interval(mavlink_subs.xsens_attitude_sub,1000);
 
 //	    /*
 //	     * -- Added subscriptions for XSENS-Global_Position communication to the GCS

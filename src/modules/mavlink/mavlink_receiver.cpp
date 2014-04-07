@@ -134,7 +134,7 @@ static int32_t lon0 = 0;
 static double alt0 = 0;
 
 // variables to select the parameters which are sent to the GCS
-sel_par_QGC_t qgc_selected_params = {1,1,0,0,0,0};
+sel_par_QGC_t qgc_selected_params = {1,0,0,0,0,0};
 
 static void
 handle_message(mavlink_message_t *msg)
