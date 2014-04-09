@@ -136,6 +136,8 @@ static double alt0 = 0;
 // variables to select the parameters which are sent to the GCS
 sel_par_QGC_t qgc_selected_params = {1,0,0,0,0,0};
 
+
+
 static void
 handle_message(mavlink_message_t *msg)
 {
@@ -248,6 +250,7 @@ handle_message(mavlink_message_t *msg)
 							mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"XSENS-GPS-Pos STOP");
 						}
 					break;
+
 					default:
 						mavlink_msg_statustext_send(MAVLINK_COMM_0,MAV_SEVERITY_INFO,"Wrong Component-ID");
 					}

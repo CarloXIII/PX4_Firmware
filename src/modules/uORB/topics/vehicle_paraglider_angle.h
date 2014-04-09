@@ -62,9 +62,9 @@
  */
 struct vehicle_paraglider_angle_s {
 	uint64_t timestamp;								/* Timestamp for each channel */
-	uint64_t error_count[MAX127_USED_CHANNELS];		/* Error_count for each channel */
 	uint16_t value[MAX127_USED_CHANNELS];			/* Raw Value for each channel */
 	float si_units[MAX127_USED_CHANNELS];			/* si_units for each channel */
+	float twist_angle;								/* Relative Angle (si_units[1]-si_units[0])*/
 };
 
 /**

@@ -712,7 +712,7 @@ l_nav_cap(const struct listener *l)
 		 mavlink_msg_twist_angle_send(MAVLINK_COMM_0,
 			 veh_para_angle.si_units[0],
 			 veh_para_angle.si_units[1],
-			 (veh_para_angle.si_units[1]) - (veh_para_angle.si_units[0]));
+			 veh_para_angle.twist_angle);
 	}
 }
 
