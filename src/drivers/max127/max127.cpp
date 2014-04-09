@@ -514,8 +514,8 @@ int MAX127::collect() {
 			return ret;
 		}
 
-		/* wait 2ms */
-		usleep(2000);
+		/* wait 1ms */
+		usleep(1000);
 
 		/*
 		 * collect phase
@@ -550,8 +550,8 @@ int MAX127::collect() {
 		report.value[ch] = value;
 		report.si_units[ch] = si_units;
 
-		/* wait 2ms */
-		usleep(2000);
+		/* wait 1ms */
+		usleep(1000);
 	} //end for() channel meassurement
 
 #if(FILTER_POTI_VALUES)

@@ -25,14 +25,20 @@
 #include "twist_angle_control.h"
 
 #define DT_MIN (0.0025f)	// Defines the Frequenz of the controller, should not higher than 400Hz
-#define MAX_ANG_SP (0.25f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
+#define MAX_ANG_SP (0.24f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
+
+// low pass filter
+#define F_CUT (3.0f)
+float tau = (1/(2*M_PI*F_CUT));
+
 // twist angle control parameters
-PARAM_DEFINE_FLOAT(TWISTANG_P, 22.8f);
-PARAM_DEFINE_FLOAT(TWISTANG_I, 12.2f);
-PARAM_DEFINE_FLOAT(TWISTANG_D, 10.4f);
-PARAM_DEFINE_FLOAT(TWISTANG_INT_LIM, 10.0f);
+PARAM_DEFINE_FLOAT(TWISTANG_P, 21.0f);
+PARAM_DEFINE_FLOAT(TWISTANG_I, 12.1f);
+PARAM_DEFINE_FLOAT(TWISTANG_D, 8.69f);
+PARAM_DEFINE_FLOAT(TWISTANG_INT_LIM, 0.55f);
 PARAM_DEFINE_FLOAT(TWISTANG_SAT, 0.65f);
 PARAM_DEFINE_FLOAT(TWISTANG_THR_SP, 0.4f);
+PARAM_DEFINE_INT32(TWISTANG_FILT, 0);
 /* Antireset Windup */
 
 struct twist_angle_control_params {
@@ -42,6 +48,7 @@ struct twist_angle_control_params {
 	float integral_limiter;
 	float saturation;
 	float thrust_sp;
+	int filt;
 };
 
 struct twist_angle_control_param_handles {
@@ -51,6 +58,7 @@ struct twist_angle_control_param_handles {
 	param_t integral_limiter;
 	param_t saturation;
 	param_t thrust_sp;
+	param_t filt;
 };
 
 /* Internal Prototypes */
@@ -66,6 +74,7 @@ static int parameters_init(struct twist_angle_control_param_handles *h) {
 	h->integral_limiter = param_find("TWISTANG_INT_LIM");
 	h->saturation = param_find("TWISTANG_SAT");
 	h->thrust_sp = param_find("TWISTANG_THR_SP");
+	h->filt = param_find("TWISTANG_FILT");
 	return OK;
 }
 
@@ -77,6 +86,7 @@ static int parameters_update(const struct twist_angle_control_param_handles *h,
 	param_get(h->integral_limiter, &(p->integral_limiter));
 	param_get(h->saturation, &(p->saturation));
 	param_get(h->thrust_sp, &(p->thrust_sp));
+	param_get(h->filt, &(p->filt));
 	return OK;
 }
 
@@ -144,12 +154,25 @@ int twist_angle_control(
 		/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer right[rad] - Value of the Potentiometer left[rad] */
 		float actual_twist_ang = ((angle_measurement->si_units[1])
 				- (angle_measurement->si_units[0]));
+		static float actual_twist_ang_filt_last = 0.0f;
+		float alpha = tau/(tau+deltaT);
+		float actual_twist_ang_filt = actual_twist_ang * (1-alpha) + actual_twist_ang_filt_last * alpha;
+		actual_twist_ang_filt_last = actual_twist_ang_filt;
 
 		/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 		float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP; /* generate a reference_twist_ang */
 
+		if (!p.filt==1)
+		{
 		actuators->control[2] = pid_calculate(&twist_angle_controller,
 				reference_twist_ang, actual_twist_ang, 0, deltaT); //use PID-Controller lib pid.h
+		}
+		else
+		{
+			actuators->control[2] = pid_calculate(&twist_angle_controller,
+					reference_twist_ang, actual_twist_ang_filt, 0, deltaT); //use PID-Controller lib pid.h
+		}
+
 #if (DEBUG)  //just for debugging
 		if (counter % 1000 == 0) {
 			printf(
