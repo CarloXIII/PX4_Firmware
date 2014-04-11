@@ -1391,6 +1391,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 				log_msg.body.log_RANG.t = buf.rel_angle.timestamp;
 				log_msg.body.log_RANG.ang_l = buf.rel_angle.si_units[0];
 				log_msg.body.log_RANG.ang_r = buf.rel_angle.si_units[1];
+				log_msg.body.log_RANG.ang_diff = buf.rel_angle.twist_angle;
 				LOGBUFFER_WRITE_AND_COUNT(RANG);
 			}
 
