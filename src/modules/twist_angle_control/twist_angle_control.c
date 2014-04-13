@@ -25,7 +25,7 @@
 #include "twist_angle_control.h"
 
 #define DT_MIN (0.0025f)	// Defines the Frequenz of the controller, should not higher than 400Hz
-#define MAX_ANG_SP (0.24f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
+#define MAX_ANG_SP (0.2f)	// For maximum twist angle between paraglider and load (after this, the limit of the controller is reached)
 
 // twist angle control parameters
 PARAM_DEFINE_FLOAT(TWISTANG_P, 0.8f);
@@ -33,7 +33,7 @@ PARAM_DEFINE_FLOAT(TWISTANG_I, 3.4f);
 PARAM_DEFINE_FLOAT(TWISTANG_D, 1.6f);
 PARAM_DEFINE_FLOAT(TWISTANG_INT_LIM, 0.6f);
 PARAM_DEFINE_FLOAT(TWISTANG_SAT, 0.65f);
-PARAM_DEFINE_FLOAT(TWISTANG_THR_SP, 0.4f);
+PARAM_DEFINE_FLOAT(TWISTANG_THR_SP, 0.35f);
 
 struct twist_angle_control_params {
 	float twist_angle_p;
@@ -141,9 +141,8 @@ int twist_angle_control(
 	last_run = hrt_absolute_time();
 
 	if (manual_sp->throttle > p.thrust_sp) { //enables the controller only if the thrust is high enough
-		/* Calculate the relativ angle between the paraglider and load. Value of the Potentiometer right[rad] - Value of the Potentiometer left[rad] */
-		float actual_twist_ang = ((angle_measurement->si_units[1])
-				- (angle_measurement->si_units[0]));
+		/* The relative angle between the paraglider and load. Value of the Potentiometer right[rad] - Value of the Potentiometer left[rad] */
+		float actual_twist_ang = angle_measurement->twist_angle;
 
 		/* Scaling of the yaw input (-1..1) to a reference twist angle (-MAX_ANG_SP...MAX_ANG_SP) */
 		float reference_twist_ang = manual_sp->yaw * MAX_ANG_SP; /* generate a reference_twist_ang */
