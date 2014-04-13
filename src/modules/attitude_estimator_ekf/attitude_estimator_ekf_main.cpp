@@ -39,7 +39,7 @@
  * Extended Kalman Filter for Attitude Estimation.
  */
 // todo Carlo: Makro zum wählen der Sensor-Daten Quelle
-#define PARAM_SOURCE_XSENS (1)
+#define PARAM_SOURCE_XSENS (0)
 
 #include <nuttx/config.h>
 #include <unistd.h>
@@ -247,7 +247,7 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
 #else
-	struct xsens_sensor_combined_s raw;
+	struct sensor_combined_s raw;
 	memset(&raw, 0, sizeof(raw));
 	struct vehicle_gps_position_s gps;
 	memset(&gps, 0, sizeof(gps));
@@ -305,7 +305,7 @@ const unsigned int loop_interval_alarm = 6500;	// loop interval in microseconds
 	orb_set_interval(sub_raw, 3);
 
 	/* subscribe to GPS */
-	int sub_gps = orb_subscribe(ORB_ID(vehicle_gps_position))
+	int sub_gps = orb_subscribe(ORB_ID(vehicle_gps_position));
 
 	/* subscribe to GPS */
 	int sub_global_pos = orb_subscribe(ORB_ID(vehicle_global_position));
