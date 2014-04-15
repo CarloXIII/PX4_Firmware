@@ -80,7 +80,8 @@ struct airspeed_s airspeed;
 // User defined message structs
 struct vehicle_paraglider_angle_s veh_para_angle;
 struct xsens_sensor_combined_s xsens_sens_combined;
-struct xsens_vehicle_attitude_s xsens_veh_attitude;
+//struct xsens_vehicle_attitude_s xsens_veh_attitude;
+struct paraglider_altitude_estimator_s para_alt_estim;
 struct xsens_vehicle_global_position_s xsens_veh_global_position;
 //struct xsens_vehicle_gps_position_s xsens_veh_gps_positon;
 
@@ -135,7 +136,8 @@ static void	l_airspeed(const struct listener *l);
 static void	l_nav_cap(const struct listener *l);
 static void l_paraglider_angle(const struct listener *l);
 static void l_xsens_sensor_combined(const struct listener *l);
-static void l_xsens_attitude(const struct listener *l);
+//static void l_xsens_attitude(const struct listener *l);
+static void l_paraglider_altitude_estimator(const struct listener *l);
 //static void l_xsens_global_position(const struct listener *l);
 ////static void l_xsens_gps_position(const struct listener *l);
 
@@ -166,7 +168,8 @@ static const struct listener listeners[] = {
 	{l_nav_cap,			&mavlink_subs.navigation_capabilities_sub,		0},
 	{l_paraglider_angle,	&mavlink_subs.vehicle_paraglider_angle_sub,	0},
 	{l_xsens_sensor_combined,	&mavlink_subs.xsens_sensor_combined_sub, 0},
-	{l_xsens_attitude,		&mavlink_subs.xsens_attitude_sub, 0},
+	//{l_xsens_attitude,		&mavlink_subs.xsens_attitude_sub, 0},
+	{l_paraglider_altitude_estimator,		&mavlink_subs.para_alt_estim_sub, 0},
 //	{l_xsens_global_position,	&mavlink_subs.xsens_global_position_sub, 0},
 		//{l_xsens_gps_position,	&mavlink_subs.xsens_gps_position_sub, 0},
 };
@@ -643,7 +646,8 @@ l_vehicle_attitude_controls(const struct listener *l)
 						   last_sensor_timestamp / 1000,
 						   "ctrl3     ",
 						   actuators_0.control[3]);
-	}
+
+}
 }
 
 // todo Disabled von Carlo zum sparen von subscriptions (Werden für XSENS-Messages benötigt)
@@ -759,24 +763,25 @@ l_nav_cap(const struct listener *l)
  /*
   * Callback method to send the attitude-data from the XSENS to the GCS
   */
-  void
-  l_xsens_attitude(const struct listener *l)
-  {
-	orb_copy(ORB_ID(xsens_vehicle_attitude),mavlink_subs.xsens_attitude_sub, &xsens_veh_attitude);
- 	if(qgc_selected_params.XSENS_ATTITUDE_SEL==1){
- 	 mavlink_msg_xsens_attitude_send(MAVLINK_COMM_0,
- 			 xsens_veh_attitude.timestamp,
- 			 xsens_veh_attitude.roll,
- 			 xsens_veh_attitude.pitch,
- 			 xsens_veh_attitude.yaw,
- 			 xsens_veh_attitude.rollspeed,
- 			 xsens_veh_attitude.pitchspeed,
- 			 xsens_veh_attitude.yawspeed,
- 			 xsens_veh_attitude.rollacc,
- 			 xsens_veh_attitude.pitchacc,
- 			 xsens_veh_attitude.yawspeed);
- 	}
-  }
+//  void
+//  l_xsens_attitude(const struct listener *l)
+//  {
+//	orb_copy(ORB_ID(xsens_vehicle_attitude),mavlink_subs.xsens_attitude_sub, &xsens_veh_attitude);
+// 	if(qgc_selected_params.XSENS_ATTITUDE_SEL==1){
+// 	 mavlink_msg_xsens_attitude_send(MAVLINK_COMM_0,
+// 			 xsens_veh_attitude.timestamp,
+// 			 xsens_veh_attitude.roll,
+// 			 xsens_veh_attitude.pitch,
+// 			 xsens_veh_attitude.yaw,
+// 			 xsens_veh_attitude.rollspeed,
+// 			 xsens_veh_attitude.pitchspeed,
+// 			 xsens_veh_attitude.yawspeed,
+// 			 xsens_veh_attitude.rollacc,
+// 			 xsens_veh_attitude.pitchacc,
+// 			 xsens_veh_attitude.yawspeed);
+//  	}
+//  }
+
 //
 //
 //
@@ -831,6 +836,21 @@ l_nav_cap(const struct listener *l)
 // 			 xsens_veh_gps_positon.cog_rad);
 // 	   }
 //  }
+
+  /*
+   * Callback method to send the Twistangle date to the GCS
+   */
+   void
+   l_paraglider_altitude_estimator(const struct listener *l)
+   {
+  	 orb_copy(ORB_ID(paraglider_altitude_estimator),mavlink_subs.para_alt_estim_sub, &para_alt_estim);
+  	 if(qgc_selected_params.PARA_ALT_ESTIM == 1){
+  		 mavlink_msg_named_value_float_send(MAVLINK_COMM_0,
+  				 para_alt_estim.timestamp,
+  				 "BaroNew",
+  				 para_alt_estim.altitude_meter);
+  	}
+  }
 
 static void *
 uorb_receive_thread(void *arg)
@@ -1000,8 +1020,11 @@ uorb_receive_start(void)
 			orb_set_interval(mavlink_subs.xsens_sensor_combined_sub,1000);
 
 
-			mavlink_subs.xsens_attitude_sub = orb_subscribe(ORB_ID(xsens_vehicle_attitude));
-			orb_set_interval(mavlink_subs.xsens_attitude_sub,1000);
+//			mavlink_subs.xsens_attitude_sub = orb_subscribe(ORB_ID(xsens_vehicle_attitude));
+//			orb_set_interval(mavlink_subs.xsens_attitude_sub,1000);
+
+			mavlink_subs.para_alt_estim_sub = orb_subscribe(ORB_ID(paraglider_altitude_estimator));
+			orb_set_interval(mavlink_subs.para_alt_estim_sub,100);
 
 //	    /*
 //	     * -- Added subscriptions for XSENS-Global_Position communication to the GCS

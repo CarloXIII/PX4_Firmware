@@ -244,7 +244,8 @@ void KalmanNav::update()
 		vD = _gps.vel_d_m_s;
 		setLatDegE7(_gps.lat);
 		setLonDegE7(_gps.lon);
-		setAltE3(_gps.alt);
+		// XXX Carlo setAltE3(_gps.alt);
+		setAltE3(_sensors.baro_alt_meter);
 		// set reference position for
 		// local position
 		lat0 = lat;
@@ -686,7 +687,8 @@ int KalmanNav::correctPos()
 	y(1) = _gps.vel_e_m_s - vE;
 	y(2) = double(_gps.lat) - double(lat) * 1.0e7 * M_RAD_TO_DEG;
 	y(3) = double(_gps.lon) - double(lon) * 1.0e7 * M_RAD_TO_DEG;
-	y(4) = _gps.alt / 1.0e3f - alt;
+	//XXX y(4) = _gps.alt / 1.0e3f - alt;
+	y(4) = _sensors.baro_alt_meter - alt;
 	y(5) = _sensors.baro_alt_meter - alt;
 
 	// compute correction
@@ -708,7 +710,8 @@ int KalmanNav::correctPos()
 			vD = _gps.vel_d_m_s;
 			setLatDegE7(_gps.lat);
 			setLonDegE7(_gps.lon);
-			setAltE3(_gps.alt);
+			//setAltE3(_gps.alt);
+			setAltE3(_sensors.baro_alt_meter);
 			// reset P matrix to P0
 			P = P0;
 			return ret_error;

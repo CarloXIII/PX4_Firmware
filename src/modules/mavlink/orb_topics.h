@@ -73,6 +73,7 @@
 #include <uORB/topics/xsens_vehicle_attitude.h>
 #include <uORB/topics/xsens_vehicle_global_position.h>
 //#include <uORB/topics/xsens_vehicle_gps_position.h>
+#include <uORB/topics/paraglider_altitude_estimator.h>
 
 struct mavlink_subscriptions {
 	int sensor_sub;
@@ -102,7 +103,8 @@ struct mavlink_subscriptions {
 	int position_setpoint_triplet_sub;
 	int vehicle_paraglider_angle_sub;
 	int xsens_sensor_combined_sub;
-	int xsens_attitude_sub;
+	//int xsens_attitude_sub;
+	int para_alt_estim_sub;
 //	int xsens_global_position_sub;
 		//int xsens_gps_position_sub;
 };
@@ -139,6 +141,7 @@ typedef struct sel_par_QGC{
 	uint8_t XSENS_GPS_POS_SEL :1;
 	uint8_t XSENS_SENS_COMB_SEL :1;
 	uint8_t XSENS_SENS_RAW_SEL :1;
+	uint8_t PARA_ALT_ESTIM :1;
 }sel_par_QGC_t;
 
 // todo Carlo: Selected Parameters to send to QGC

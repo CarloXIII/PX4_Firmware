@@ -117,6 +117,9 @@ ORB_DEFINE(vehicle_local_position, struct vehicle_local_position_s);
 #include "topics/vehicle_paraglider_angle.h"
 ORB_DEFINE(vehicle_paraglider_angle, struct vehicle_paraglider_angle_s);
 
+#include "topics/paraglider_altitude_estimator.h"
+ORB_DEFINE(paraglider_altitude_estimator, struct paraglider_altitude_estimator_s);
+
 #include "topics/vehicle_vicon_position.h"
 ORB_DEFINE(vehicle_vicon_position, struct vehicle_vicon_position_s);
 

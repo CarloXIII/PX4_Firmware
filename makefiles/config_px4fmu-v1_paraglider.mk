@@ -78,7 +78,7 @@ MODULES		+= modules/gpio_led
 MODULES		+= modules/attitude_estimator_ekf
 MODULES		+= modules/att_pos_estimator_ekf
 MODULES		+= modules/position_estimator_inav
-MODULES		+= modules/attitude_estimator_so3
+#MODULES		+= modules/attitude_estimator_so3
 #MODULES		+= examples/flow_position_estimator
 
 #
@@ -89,6 +89,7 @@ MODULES		+= modules/fw_att_control
 MODULES		+= modules/mc_att_control
 MODULES		+= modules/mc_pos_control
 MODULES		+= modules/twist_angle_control
+MODULES		+= modules/paraglider_altitude_estimator
 #MODULES		+= examples/flow_position_control
 #MODULES		+= examples/flow_speed_control
 

@@ -98,6 +98,7 @@ int twist_angle_control(
 	 *    2  -  yaw    (-1..+1)
 	 *    3  -  thrust ( 0..+1)
 	 */
+
 	static int counter = 0;
 	static bool initialized = false;
 

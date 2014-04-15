@@ -354,6 +354,13 @@ struct log_RANG_s {
 	float ang_diff;
 };
 
+/* --- Paraglider Altitude Estimator --- */
+#define LOG_PALT_MSG 27
+struct log_PALT_s {
+	uint64_t t;
+	float alt_m;
+};
+
 /* --- TIME - TIME STAMP --- */
 #define LOG_TIME_MSG 129
 struct log_TIME_s {
@@ -408,6 +415,7 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(XATT, "Qffffff", "Time,Roll,Pitch,Yaw,RollRate,PitchRate,YawRate"),
 	LOG_FORMAT(XGPO, "QLLffff", "Time,Lat,Lon,Alt,VelN,VelE,VelD"),
 	LOG_FORMAT(RANG, "Qfff","Time,Ang_l,Ang_r,Ang_diff"),
+	LOG_FORMAT(PALT, "Qf","Time,Alt_m"),
 	/* system-level messages, ID >= 0x80 */
 	// FMT: don't write format of format message, it's useless
 	LOG_FORMAT(TIME, "Q", "StartTime"),

@@ -141,8 +141,11 @@ protected:
 	math::Quaternion q;         /**< quaternion from body to nav frame */
 	// subscriptions
 	control::UOrbSubscription<sensor_combined_s> _sensors;          /**< sensors sub. */
+	//control::UOrbSubscription<xsens_sensor_combined_s> _sensors;          /**< sensors sub. */
 	control::UOrbSubscription<vehicle_gps_position_s> _gps;         /**< gps sub. */
+	//control::UOrbSubscription<xsens_vehicle_gps_position_s> _gps;         /**< gps sub. */
 	control::UOrbSubscription<parameter_update_s> _param_update;    /**< parameter update sub. */
+
 	// publications
 	control::UOrbPublication<vehicle_global_position_s> _pos;       /**< position pub. */
 	control::UOrbPublication<vehicle_local_position_s> _localPos;   /**< local position pub. */

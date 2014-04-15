@@ -93,6 +93,7 @@
 #include <uORB/topics/xsens_vehicle_attitude.h>
 #include <uORB/topics/xsens_vehicle_global_position.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
+#include <uORB/topics/paraglider_altitude_estimator.h>
 
 #include <systemlib/systemlib.h>
 #include <systemlib/param/param.h>
@@ -803,6 +804,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 		struct xsens_vehicle_attitude_s xsens_attitude;
 		struct xsens_vehicle_global_position_s xsens_global_pos;
 		struct vehicle_paraglider_angle_s rel_angle;
+		struct paraglider_altitude_estimator_s para_alt_estim;
 	} buf;
 
 	memset(&buf, 0, sizeof(buf));
@@ -843,6 +845,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 			struct log_XATT_s log_XATT;
 			struct log_XGPO_s log_XGPO;
 			struct log_RANG_s log_RANG;
+			struct log_PALT_s log_PALT;
 		} body;
 	} log_msg = {
 		LOG_PACKET_HEADER_INIT(0)
@@ -881,6 +884,7 @@ int sdlog3_thread_main(int argc, char *argv[])
 		int xsens_attitude_sub;
 		int xsens_global_pos_sub;
 		int rel_angle_sub;
+		int para_alt_estim_sub;
 
 	} subs;
 
@@ -919,6 +923,8 @@ int sdlog3_thread_main(int argc, char *argv[])
 	subs.xsens_global_pos_sub = orb_subscribe(ORB_ID(xsens_vehicle_global_position));
 	/* --- RELATIVE ANGLE --- */
 	subs.rel_angle_sub = orb_subscribe(ORB_ID(vehicle_paraglider_angle));
+	/* --- Paraglider Altitude Estimator ---*/
+	subs.para_alt_estim_sub = orb_subscribe(ORB_ID(paraglider_altitude_estimator));
 
 
 	thread_running = true;
@@ -1393,6 +1399,14 @@ int sdlog3_thread_main(int argc, char *argv[])
 				log_msg.body.log_RANG.ang_r = buf.rel_angle.si_units[1];
 				log_msg.body.log_RANG.ang_diff = buf.rel_angle.twist_angle;
 				LOGBUFFER_WRITE_AND_COUNT(RANG);
+			}
+
+			/* --- PARAGLIDER ALTITUDE ESTIMATOR --- */
+			if (copy_if_updated(ORB_ID(paraglider_altitude_estimator),  subs.para_alt_estim_sub, &buf.para_alt_estim)) {
+				log_msg.msg_type = LOG_PALT_MSG;
+				log_msg.body.log_PALT.t = buf.para_alt_estim.timestamp;
+				log_msg.body.log_PALT.alt_m = buf.para_alt_estim.altitude_meter;
+				LOGBUFFER_WRITE_AND_COUNT(PALT);
 			}
 
 		/* signal the other thread new data, but not yet unlock */
