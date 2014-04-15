@@ -61,7 +61,6 @@
 #include <nuttx/wqueue.h>
 #include <nuttx/clock.h>
 
-#include <systemlib/param/param.h>
 #include <systemlib/perf_counter.h>
 #include <systemlib/err.h>
 
@@ -72,7 +71,6 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/subsystem_info.h>
 #include <uORB/topics/vehicle_paraglider_angle.h>
-#include <mathlib/math/filter/LowPassFilter2p.hpp>
 
 #include <board_config.h>
 
@@ -83,16 +81,13 @@
 #define MAX127_INPUT_RANGE		0		/* Defines the input range (0=0-5V ; 1=0-10V ; 2=-5-5V ; 3=-10-10V) */
 
 #define MAX127_CONVERSION_INTERVAL 20000	/* Time between two conversions, 20ms*/
-#define MAX127_DEFAULT_DRIVER_FILTER_FREQ 3 /* Defines the Cutoff-Frequency of the LowPassFilter for the angles*/
+
 /* Constants who are only relevant for the relative angle measurement between vehicle and paraglider */
 
 #define RAW_AT_ZERO_LEFT 1946		/* Defines the raw value where the angle should be zero for the left potentiometer */
 #define RAW_AT_ZERO_RIGHT 1830		/* Defines the raw value where the angle should be zero for the right potentiometer */
 #define RAW_AT_PI_2_LEFT 3282		/* Defines the raw value where the angle should be pi/2 (90°) for the left potentiometer */
 #define RAW_AT_PI_2_RIGHT 3204		/* Defines the raw value where the angle should be pi/2 (90°) for the right potentiometer */
-
-// ENABLE POTI-Left/Right LowPass-Filter
-#define FILTER_POTI_VALUES (0)
 
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
@@ -139,9 +134,6 @@ private:
 	perf_counter_t _sample_perf;
 	perf_counter_t _comms_errors;
 	perf_counter_t _buffer_overflows;
-
-	math::LowPassFilter2p	_angle_filter_l;
-	math::LowPassFilter2p	_angle_filter_r;
 
 	/**
 	 * Test whether the device supported by the driver is present at a
@@ -207,11 +199,8 @@ MAX127::MAX127(int bus, int address) :
 				nullptr), _sensor_ok(false), _measure_ticks(0), _collect_phase(
 				false), _rel_angle_topic(-1), _sample_perf(
 				perf_alloc(PC_ELAPSED, "max127_read")), _comms_errors(
-				perf_alloc(PC_COUNT, "max127_comms_errors")),
-				_buffer_overflows(perf_alloc(PC_COUNT, "max127_buffer_overflows")),
-				_angle_filter_l(50, MAX127_DEFAULT_DRIVER_FILTER_FREQ),
-				_angle_filter_r(50, MAX127_DEFAULT_DRIVER_FILTER_FREQ)
-{
+				perf_alloc(PC_COUNT, "max127_comms_errors")), _buffer_overflows(
+				perf_alloc(PC_COUNT, "max127_buffer_overflows")) {
 	// enable debug() calls
 	_debug_enabled = true;
 	_raw_at_zero[0] = RAW_AT_ZERO_LEFT;
@@ -227,8 +216,6 @@ MAX127::MAX127(int bus, int address) :
 
 	// work_cancel in the dtor will explode if we don't do this...
 	memset(&_work, 0, sizeof(_work));
-
-
 }
 
 MAX127::~MAX127() {
@@ -552,15 +539,11 @@ int MAX127::collect() {
 
 		/* wait 1ms */
 		usleep(1000);
-	} //end for() channel meassurement
+	} //end for() channel measurement
 
-#if(FILTER_POTI_VALUES)
-		report.si_units[0] = _angle_filter_l.apply(report.si_units[0]);
-		report.si_units[1] = _angle_filter_r.apply(report.si_units[1]);
-#endif
-
-
+	/* Calculate the relative angle between the paraglider and the load */
 	report.twist_angle = report.si_units[1] - report.si_units[0];
+
 	/* publish it */
 	orb_publish(ORB_ID(vehicle_paraglider_angle), _rel_angle_topic, &report);
 
