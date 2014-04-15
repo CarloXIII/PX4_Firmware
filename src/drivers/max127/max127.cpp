@@ -539,7 +539,10 @@ int MAX127::collect() {
 
 		/* wait 1ms */
 		usleep(1000);
-	} //end for() channel meassurement
+	} //end for() channel measurement
+
+	/* Calculate the relative angle between the paraglider and the load */
+	report.twist_angle = report.si_units[1] - report.si_units[0];
 
 	/* publish it */
 	orb_publish(ORB_ID(vehicle_paraglider_angle), _rel_angle_topic, &report);
