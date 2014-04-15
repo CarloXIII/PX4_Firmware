@@ -23,6 +23,7 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/paraglider_altitude_estimator.h>
 #include <uORB/topics/xsens_sensor_combined.h>
+#include <uORB/topics/sensor_combined.h>
 
 #include <systemlib/param/param.h>
 #include <systemlib/pid/pid.h>
@@ -61,22 +62,16 @@ typedef struct ringbuffer{
 
 static baroBuffer_t altitudeBuffer;
 
+
 // RINGBUFFER FUNCTIONS
 void initBuffer(baroBuffer_t *bB, int length){
-	bB->length = length;
+	//free(bB->elems);
+	bB->length = (int)(length);
 	bB->head = 0;
 	bB->tail = 0;
 	bB->elems = (float*)calloc(bB->length,sizeof(float));
 }
 
-void addElementToBuffer(baroBuffer_t *bB, float newElement){
-	if(bB->head==bB->length){
-		bB->head=0;
-	}
-
-	bB->elems[(bB->head)] = newElement;
-	bB->head = bB->head + 1;
-}
 
 float getBufferValue(baroBuffer_t *bB){
 	float sum = 0;
@@ -86,14 +81,92 @@ float getBufferValue(baroBuffer_t *bB){
 	sum = sum/((float)(bB->length));
 	return sum;
 }
+
+
+void addElementToBuffer(baroBuffer_t *bB, float newElement){
+	if(bB->head>=bB->length){
+		bB->head=0;
+	}
+
+	bB->elems[(bB->head)] = newElement;
+	bB->head = bB->head + 1;
+}
+
+// twist angle control parameters
+PARAM_DEFINE_INT32(PALT_BUFFER_LENGTH, 20);
+PARAM_DEFINE_FLOAT(PALT_INITIAL_ALTITUDE, 0.0f);
+PARAM_DEFINE_INT32(PALT_SKIP_VALUES,3);
+PARAM_DEFINE_FLOAT(PALT_LOWPASS_FG, 3.0f);
+
+
+struct paraglider_altitude_estimator_params {
+	int palt_buffer_length;
+	float palt_initial_altitude;
+	int palt_skip_values;
+	float palt_lowpass_fg;
+};
+
+struct paraglider_altitude_estimator_param_handles {
+	param_t palt_buffer_length;
+	param_t palt_initial_altitude;
+	param_t palt_skip_values;
+	param_t palt_lowpass_fg;
+
+};
+
+/* Internal Prototypes */
+static int parameters_init(struct paraglider_altitude_estimator_param_handles *h);
+static int parameters_update(const struct paraglider_altitude_estimator_param_handles *h,
+		struct paraglider_altitude_estimator_params *p);
+
+static int parameters_init(struct paraglider_altitude_estimator_param_handles *h) {
+	/* PID parameters */
+	h->palt_buffer_length = param_find("PALT_BUFFER_LENGTH");
+	h->palt_initial_altitude = param_find("PALT_INITIAL_ALTITUDE");
+	h->palt_skip_values = param_find("PALT_SKIP_VALUES");
+	h->palt_lowpass_fg = param_find("PALT_LOWPASS_FG");
+
+	return OK;
+}
+
+static int parameters_update(const struct paraglider_altitude_estimator_param_handles *h,
+		struct paraglider_altitude_estimator_params *p) {
+	param_get(h->palt_buffer_length, &(p->palt_buffer_length));
+	param_get(h->palt_initial_altitude, &(p->palt_initial_altitude));
+	param_get(h->palt_skip_values, &(p->palt_skip_values));
+	param_get(h->palt_lowpass_fg, &(p->palt_lowpass_fg));
+	return OK;
+}
+
+
+
+
+
+
 //
 
 /* Main Thread */
 int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 	/* read arguments */
 	bool verbose = false;		// for talking option
+	bool AltitudeInitialised = false;
+	float altitude = 0;
 
-	initBuffer(&altitudeBuffer,100);
+	static float output = 360;
+	static float oldOutput = 0;
+	uint64_t oldTimestamp = 0;
+
+	float baroOffset = 0;
+	float startAltitude = 0;
+
+	static struct paraglider_altitude_estimator_params p;
+	static struct paraglider_altitude_estimator_param_handles h;
+	int bufferLengthLocal = 20;
+
+	initBuffer(&altitudeBuffer,bufferLengthLocal);
+
+
+
 
 
 	for (int i = 1; i < argc; i++) {
@@ -108,6 +181,9 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 	/* declare and safely initialize all structs */
 	struct xsens_sensor_combined_s xsens_sensor_combined_values;
 	memset(&xsens_sensor_combined_values, 0, sizeof(xsens_sensor_combined_values));
+	struct sensor_combined_s sensor_combined_values;
+	memset(&sensor_combined_values, 0, sizeof(sensor_combined_values));
+
 
 	struct vehicle_control_mode_s control_mode;
 	memset(&control_mode, 0, sizeof(control_mode));
@@ -124,47 +200,97 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 
 	/* subscribe */
 	int xsens_sensor_combined_sub = orb_subscribe(ORB_ID(xsens_sensor_combined));
+	int sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
 
 
 
 
-	//int control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
-	//int vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 
 	/* Setup of loop */
-	struct pollfd fds = { .fd = xsens_sensor_combined_sub, .events = POLLIN };
+	struct pollfd fds = { .fd = sensor_combined_sub, .events = POLLIN };
 
 	while (!thread_should_exit) {
 		/* wait for a sensor update, check for exit condition every 100 ms with this while-loop */
-		poll(&fds, 1, 100);
+		poll(&fds, 1, 10);
 		static int counter = 0;
 
-		bool xsens_sensor_combined_updated;
-		orb_check(xsens_sensor_combined_sub, &xsens_sensor_combined_updated); /* Check if there is a new relative angle measurement */
-
-		/* get a local copy */
-		if (xsens_sensor_combined_updated){
-			orb_copy(ORB_ID(xsens_sensor_combined), xsens_sensor_combined_sub,
-					&xsens_sensor_combined_values);
-			addElementToBuffer(&altitudeBuffer,xsens_sensor_combined_values.baro_alt_meter);
+		/* load new parameters with lower rate */
+		if (counter % 100 == 0) {
+			/* update parameters from storage */
+			parameters_update(&h, &p);
+//			if(bufferLengthLocal != p.palt_buffer_length){
+//				//free(altitudeBuffer.elems);
+//				bufferLengthLocal = p.palt_buffer_length;
+//				initBuffer(&altitudeBuffer,bufferLengthLocal);
+//			}
+			if(startAltitude != (p.palt_initial_altitude)){
+				startAltitude = p.palt_initial_altitude;
+				AltitudeInitialised = false;
+			}
 		}
-
 // .................................................................
 // FUNCTION BLOCK
 //..................................................................
 
+		bool xsens_sensor_combined_updated;
+		bool sensor_combined_updated;
+		//orb_check(xsens_sensor_combined_sub, &xsens_sensor_combined_updated); /* Check if there is a new relative angle measurement */
+		orb_check(sensor_combined_sub, &sensor_combined_updated);
 
-		// Implementing Ringbuffer
+		/* get a local copy */
+//		if (xsens_sensor_combined_updated){
+//			orb_copy(ORB_ID(xsens_sensor_combined), xsens_sensor_combined_sub,
+//					&xsens_sensor_combined_values);
+//			addElementToBuffer(&altitudeBuffer,xsens_sensor_combined_values.baro_alt_meter);
+//		}
+
+		if (sensor_combined_updated){
+			orb_copy(ORB_ID(sensor_combined), sensor_combined_sub,
+					&sensor_combined_values);
+			addElementToBuffer(&altitudeBuffer,sensor_combined_values.baro_alt_meter);
+			if(!AltitudeInitialised && (counter>100)){
+				baroOffset = (getBufferValue(&altitudeBuffer))-(p.palt_initial_altitude);
+				AltitudeInitialised = true;
+				printf("Altitude Initialised (Paraglider_Altitude_Estimator");
+			}
+			/////////////////////////////////////////////////////
+			for(int n=0; n<altitudeBuffer.length; n++){      // Array sortieren
+					for(int i=n; i<altitudeBuffer.length; i++){
+						if(altitudeBuffer.elems[i]>altitudeBuffer.elems[i+1]){
+							float tempAlt = altitudeBuffer.elems[i];
+							altitudeBuffer.elems[i]=altitudeBuffer.elems[i+1];
+							altitudeBuffer.elems[i+1]=tempAlt;
+						}
+					}
+			}
+
+			altitude=0;
+
+			for(int i=(p.palt_skip_values); i<altitudeBuffer.length-(p.palt_skip_values);i++){
+
+				altitude = altitude + altitudeBuffer.elems[i];
+			}
+			altitude = altitude/(float)(altitudeBuffer.length-((p.palt_skip_values)*2));
+
+			// LOWPASS
+			float dt = 0.01;
+			float a = dt/((1/(2.0f*3.14f*(1.0f)))+dt);
+			oldTimestamp = sensor_combined_values.timestamp;
+
+			output = oldOutput + a*(altitude-oldOutput);
+			oldOutput = output;
+
+			//altitude_median = getBufferValue(&altitudeBuffer); //altitudeBuffer.elems[(altitudeBuffer.length)/2];
 
 
-
-		//
-
+			///////////////////////////////////////////////////
 
 
-		paraglider_altitude_estimator_out.altitude_meter = getBufferValue(&altitudeBuffer);
+		}
+
+		paraglider_altitude_estimator_out.altitude_meter = output; //altitude;
 		paraglider_altitude_estimator_out.timestamp = counter;
-//..................................................................
+
 
 
 		if (isfinite(paraglider_altitude_estimator_out.altitude_meter)) {
@@ -172,7 +298,7 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 				} else {
 					printf("actuator not finite");
 				}
-
+//..................................................................
 		counter++;
 	} // exit: while loop
 
