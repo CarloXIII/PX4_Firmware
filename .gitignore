@@ -52,7 +52,14 @@ mavlink/include/mavlink/v0.9/
 html/
 NuttX/*
 
+Documentation/*
+Doxygen/*
+Images/*
+SDcard/*
+
 doxy.log
 
 Doxyfile
+
+.metadata/*
 

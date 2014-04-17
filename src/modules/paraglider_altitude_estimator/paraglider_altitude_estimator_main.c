@@ -138,11 +138,6 @@ static int parameters_update(const struct paraglider_altitude_estimator_param_ha
 	return OK;
 }
 
-
-
-
-
-
 //
 
 /* Main Thread */
@@ -161,13 +156,9 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 
 	static struct paraglider_altitude_estimator_params p;
 	static struct paraglider_altitude_estimator_param_handles h;
-	int bufferLengthLocal = 20;
+	int bufferLengthLocal = 50;
 
 	initBuffer(&altitudeBuffer,bufferLengthLocal);
-
-
-
-
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
@@ -207,7 +198,7 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 
 
 	/* Setup of loop */
-	struct pollfd fds = { .fd = sensor_combined_sub, .events = POLLIN };
+	struct pollfd fds = { .fd = xsens_sensor_combined_sub, .events = POLLIN };
 
 	while (!thread_should_exit) {
 		/* wait for a sensor update, check for exit condition every 100 ms with this while-loop */
@@ -234,25 +225,25 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 
 		bool xsens_sensor_combined_updated;
 		bool sensor_combined_updated;
-		//orb_check(xsens_sensor_combined_sub, &xsens_sensor_combined_updated); /* Check if there is a new relative angle measurement */
-		orb_check(sensor_combined_sub, &sensor_combined_updated);
+		orb_check(xsens_sensor_combined_sub, &xsens_sensor_combined_updated); /* Check if there is a new relative angle measurement */
+		//orb_check(sensor_combined_sub, &sensor_combined_updated);
 
 		/* get a local copy */
-//		if (xsens_sensor_combined_updated){
-//			orb_copy(ORB_ID(xsens_sensor_combined), xsens_sensor_combined_sub,
-//					&xsens_sensor_combined_values);
-//			addElementToBuffer(&altitudeBuffer,xsens_sensor_combined_values.baro_alt_meter);
+		if (xsens_sensor_combined_updated){
+			orb_copy(ORB_ID(xsens_sensor_combined), xsens_sensor_combined_sub,
+					&xsens_sensor_combined_values);
+			addElementToBuffer(&altitudeBuffer,xsens_sensor_combined_values.baro_alt_meter);
 //		}
-
-		if (sensor_combined_updated){
-			orb_copy(ORB_ID(sensor_combined), sensor_combined_sub,
-					&sensor_combined_values);
-			addElementToBuffer(&altitudeBuffer,sensor_combined_values.baro_alt_meter);
-			if(!AltitudeInitialised && (counter>100)){
-				baroOffset = (getBufferValue(&altitudeBuffer))-(p.palt_initial_altitude);
-				AltitudeInitialised = true;
-				printf("Altitude Initialised (Paraglider_Altitude_Estimator");
-			}
+//
+//		if (sensor_combined_updated){
+//			orb_copy(ORB_ID(sensor_combined), sensor_combined_sub,
+//					&sensor_combined_values);
+//			addElementToBuffer(&altitudeBuffer,sensor_combined_values.baro_alt_meter);
+//			if(!AltitudeInitialised && (counter>100)){
+//				baroOffset = (getBufferValue(&altitudeBuffer))-(p.palt_initial_altitude);
+//				AltitudeInitialised = true;
+//				printf("Altitude Initialised (Paraglider_Altitude_Estimator");
+//			}
 			/////////////////////////////////////////////////////
 			for(int n=0; n<altitudeBuffer.length; n++){      // Array sortieren
 					for(int i=n; i<altitudeBuffer.length; i++){
@@ -266,16 +257,16 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 
 			altitude=0;
 
-			for(int i=(p.palt_skip_values); i<altitudeBuffer.length-(p.palt_skip_values);i++){
+			for(int i=(5); i<altitudeBuffer.length-(5);i++){
 
 				altitude = altitude + altitudeBuffer.elems[i];
 			}
-			altitude = altitude/(float)(altitudeBuffer.length-((p.palt_skip_values)*2));
+			altitude = altitude/(float)(altitudeBuffer.length-((5)*2));
 
 			// LOWPASS
-			float dt = 0.01;
+			float dt = 0.1;
 			float a = dt/((1/(2.0f*3.14f*(1.0f)))+dt);
-			oldTimestamp = sensor_combined_values.timestamp;
+			oldTimestamp = xsens_sensor_combined_values.timestamp;
 
 			output = oldOutput + a*(altitude-oldOutput);
 			oldOutput = output;
@@ -289,7 +280,7 @@ int paraglider_altitude_estimator_thread_main(int argc, char *argv[]) {
 		}
 
 		paraglider_altitude_estimator_out.altitude_meter = output; //altitude;
-		paraglider_altitude_estimator_out.timestamp = counter;
+		paraglider_altitude_estimator_out.timestamp = xsens_sensor_combined_values.timestamp;
 
 
 
